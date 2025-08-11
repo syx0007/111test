@@ -50,7 +50,7 @@ def generate_directory_tree(root_dir="content", output_file="DIRECTORY_TREE.md")
             
             # 写入文件项
             f.write(f"- [{filename}]({full_path})\n")
-        f.write('- by corainly.')
+
         print(f"目录树已生成到 {output_file}")
 
 if __name__ == "__main__":
