@@ -10,9 +10,13 @@ on:
 jobs:
   generate-tree:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 添加写入权限
     steps:
       - uses: actions/checkout@v4
-        
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}  # 明确使用GITHUB_TOKEN
+          
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -20,7 +24,6 @@ jobs:
           
       - name: Generate directory tree
         run: |
-          pip install pathlib
           python scripts/generate_directory_tree.py
           
       - name: Commit and push changes
