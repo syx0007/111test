@@ -1,0 +1,31 @@
+name: Generate Directory Tree
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'content/**'
+  workflow_dispatch:
+
+jobs:
+  generate-tree:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          
+      - name: Generate directory tree
+        run: |
+          pip install pathlib
+          python scripts/generate_directory_tree.py
+          
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add DIRECTORY_TREE.md
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update directory tree" && git push)
