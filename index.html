@@ -33,6 +33,7 @@
 
         /* 深色主题 */
         [data-theme="dark"] {
+            --primary-color: #60a5fa;
             --bg-color: #1e1e1e;
             --sidebar-bg: #252525;
             --text-color: #f0f0f0;
@@ -52,6 +53,30 @@
             --border-color: #dadce0;
             --hover-bg: #e2eaf3;
             --active-bg: #d2e3fc;
+            --card-bg: #ffffff;
+        }
+
+        /* 蔚蓝档案主题 */
+        [data-theme="azure"] {
+            --primary-color: #5d9cec;
+            --bg-color: #f5f7fa;
+            --sidebar-bg: #e6e9ed;
+            --text-color: #2c3e50;
+            --border-color: #d1d8e0;
+            --hover-bg: #dde4ec;
+            --active-bg: #d0d9e6;
+            --card-bg: #ffffff;
+        }
+
+        /* 粉色主题 */
+        [data-theme="pink"] {
+            --primary-color: #ff6b8b;
+            --bg-color: #fff5f7;
+            --sidebar-bg: #ffecef;
+            --text-color: #4a2a35;
+            --border-color: #ffd6de;
+            --hover-bg: #ffe2e8;
+            --active-bg: #ffd8e0;
             --card-bg: #ffffff;
         }
 
@@ -82,6 +107,11 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            transition: transform var(--transition-speed);
+        }
+
+        .sidebar-collapsed #sidebar {
+            transform: translateX(calc(-1 * var(--sidebar-width)));
         }
 
         .sidebar-header {
@@ -102,11 +132,21 @@
             justify-content: center;
             color: white;
             font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header .logo img {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
         }
 
         .sidebar-header .title {
             font-size: 16px;
             font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .sidebar-nav {
@@ -127,6 +167,9 @@
             letter-spacing: 0.5px;
             color: var(--text-color);
             opacity: 0.7;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .nav-item {
@@ -168,10 +211,14 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
 
         .nav-item .label {
             flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         /* 内容区域 */
@@ -182,6 +229,10 @@
             display: flex;
             flex-direction: column;
             transition: margin-left var(--transition-speed);
+        }
+
+        .sidebar-collapsed #content {
+            margin-left: 0;
         }
 
         #main-content {
@@ -250,6 +301,25 @@
             border: 1px solid var(--border-color);
         }
 
+        /* 侧边栏切换按钮 */
+        .sidebar-toggle {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            background-color: var(--card-bg);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            z-index: 10;
+            border: 1px solid var(--border-color);
+            display: none;
+        }
+
         /* Markdown内容样式 */
         .markdown-body {
             background-color: var(--bg-color);
@@ -284,24 +354,29 @@
         /* 响应式设计 */
         @media (max-width: 768px) {
             :root {
-                --sidebar-width: 72px;
+                --sidebar-width: 280px;
             }
 
             .sidebar-header .title,
             .nav-item .label,
-            .nav-section-title {
-                display: none;
+            .nav-section-title span {
+                display: block;
             }
 
-            .sidebar-header {
-                justify-content: center;
-                padding: 16px 0;
+            #sidebar {
+                transform: translateX(calc(-1 * var(--sidebar-width)));
             }
 
-            .nav-item {
-                justify-content: center;
-                margin: 0;
-                padding: 12px 0;
+            .sidebar-collapsed #sidebar {
+                transform: translateX(0);
+            }
+
+            #content {
+                margin-left: 0;
+            }
+
+            .sidebar-toggle {
+                display: flex;
             }
         }
     </style>
@@ -314,10 +389,17 @@
         <div class="hitokoto" id="hitokoto"></div>
     </div>
 
+    <!-- 侧边栏切换按钮 -->
+    <div class="sidebar-toggle" id="sidebarToggle">
+        <i class="ti ti-menu-2"></i>
+    </div>
+
     <!-- 侧边栏 -->
     <div id="sidebar">
         <div class="sidebar-header">
             <div class="logo">
+                <!-- 可以替换为自定义图标 -->
+                <!-- <img src="path/to/your/logo.png" alt="Logo"> -->
                 <i class="ti ti-book"></i>
             </div>
             <div class="title">API 文档中心</div>
@@ -357,7 +439,8 @@
             currentFile: null,
             directoryStructure: null,
             theme: localStorage.getItem('theme') || 'system',
-            collapsedGroups: JSON.parse(localStorage.getItem('collapsedGroups')) || {}
+            collapsedGroups: JSON.parse(localStorage.getItem('collapsedGroups')) || {},
+            sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true'
         };
 
         // DOM 元素
@@ -369,11 +452,15 @@
         const themeSwitcher = document.getElementById('themeSwitcher');
         const themeIcon = document.getElementById('themeIcon');
         const hitokotoElement = document.getElementById('hitokoto');
+        const sidebarToggle = document.getElementById('sidebarToggle');
 
         // 初始化
         document.addEventListener('DOMContentLoaded', async () => {
             // 设置初始主题
             applyTheme(state.theme);
+            
+            // 设置侧边栏状态
+            toggleSidebar(state.sidebarCollapsed, false);
             
             // 获取一言
             fetchHitokoto();
@@ -464,7 +551,7 @@
             // 首页导航项
             html += `
                 <div class="nav-section">
-                    <div class="nav-item ${!state.currentFile ? 'active' : ''}" data-path="content/index.md">
+                    <div class="nav-item ${!state.currentFile ? 'active' : ''}" data-path="index.md">
                         <div class="icon"><i class="ti ti-home"></i></div>
                         <div class="label">首页</div>
                     </div>
@@ -473,9 +560,15 @@
             
             // 文档目录
             state.directoryStructure.forEach(group => {
+                const isCollapsed = state.collapsedGroups[group.name];
+                
                 html += `
                     <div class="nav-section">
-                        <div class="nav-section-title">${group.name}</div>
+                        <div class="nav-section-title">
+                            <span>${group.name}</span>
+                            <i class="ti ti-chevron-${isCollapsed ? 'right' : 'down'}" data-group="${group.name}"></i>
+                        </div>
+                        <div class="nav-group-content" style="${isCollapsed ? 'display: none;' : ''}">
                 `;
                 
                 group.files.forEach(file => {
@@ -488,7 +581,7 @@
                     `;
                 });
                 
-                html += `</div>`;
+                html += `</div></div>`;
             });
             
             directoryTree.innerHTML = html;
@@ -504,21 +597,68 @@
                     loadFile(filePath);
                     updateActiveItem(filePath);
                     updateUrl(filePath);
+                    return;
+                }
+                
+                // 组标题点击 - 折叠/展开
+                const groupTitle = e.target.closest('.nav-section-title');
+                if (groupTitle) {
+                    const groupName = groupTitle.querySelector('i').dataset.group;
+                    toggleGroupCollapse(groupName);
                 }
             });
             
             // 主题切换
             themeSwitcher.addEventListener('click', toggleTheme);
             
+            // 侧边栏切换
+            sidebarToggle.addEventListener('click', () => {
+                toggleSidebar(!state.sidebarCollapsed);
+            });
+            
             // 响应式设计 - 小屏幕自动调整
             window.addEventListener('resize', handleResize);
             handleResize();
         }
 
+        // 切换侧边栏状态
+        function toggleSidebar(collapsed, saveToStorage = true) {
+            state.sidebarCollapsed = collapsed;
+            document.body.classList.toggle('sidebar-collapsed', collapsed);
+            
+            if (saveToStorage) {
+                localStorage.setItem('sidebarCollapsed', collapsed);
+            }
+            
+            // 更新按钮图标
+            const icon = sidebarToggle.querySelector('i');
+            if (icon) {
+                icon.className = collapsed ? 'ti ti-menu-2' : 'ti ti-x';
+            }
+        }
+
+        // 切换组折叠状态
+        function toggleGroupCollapse(groupName) {
+            state.collapsedGroups[groupName] = !state.collapsedGroups[groupName];
+            localStorage.setItem('collapsedGroups', JSON.stringify(state.collapsedGroups));
+            
+            // 更新UI
+            const groupElement = document.querySelector(`.nav-section-title i[data-group="${groupName}"]`);
+            if (groupElement) {
+                const isCollapsed = state.collapsedGroups[groupName];
+                groupElement.className = `ti ti-chevron-${isCollapsed ? 'right' : 'down'}`;
+                
+                const contentElement = groupElement.closest('.nav-section').querySelector('.nav-group-content');
+                if (contentElement) {
+                    contentElement.style.display = isCollapsed ? 'none' : 'block';
+                }
+            }
+        }
+
         // 加载文件
         async function loadFile(filePath) {
             if (!filePath) {
-                filePath = 'content/index.md';
+                filePath = 'index.md';
                 updateUrl(filePath);
             }
             
@@ -526,7 +666,13 @@
             mainContent.style.opacity = '0';
             
             try {
-                const response = await fetch(filePath);
+                // 确保路径正确
+                let fullPath = filePath;
+                if (!filePath.startsWith('http') && !filePath.startsWith('/') && !filePath.startsWith('./')) {
+                    fullPath = './content/' + filePath;
+                }
+                
+                const response = await fetch(fullPath);
                 if (!response.ok) throw new Error('文件加载失败');
                 
                 const markdown = await response.text();
@@ -565,21 +711,20 @@
             const fileParam = params.get('file');
             
             if (fileParam) {
-                // 确保路径以 content/ 开头
-                let filePath = fileParam.startsWith('content/') ? fileParam : `content/${fileParam}`;
-                // 确保有 .md 后缀
+                // 确保路径正确
+                let filePath = fileParam;
                 if (!filePath.endsWith('.md')) filePath += '.md';
                 
                 loadFile(filePath);
             } else {
-                loadFile('content/index.md');
+                loadFile('index.md');
             }
         }
 
         // 更新 URL
         function updateUrl(filePath) {
-            // 从路径中移除 content/ 前缀和 .md 后缀
-            let displayPath = filePath.replace(/^content\//, '').replace(/\.md$/, '');
+            // 从路径中移除 .md 后缀
+            let displayPath = filePath.replace(/\.md$/, '');
             
             const newUrl = `${window.location.pathname}?file=${encodeURIComponent(displayPath)}`;
             window.history.pushState({ path: newUrl }, '', newUrl);
@@ -603,7 +748,7 @@
         }
 
         function toggleTheme() {
-            const themes = ['system', 'light', 'dark', 'blue'];
+            const themes = ['system', 'light', 'dark', 'blue', 'azure', 'pink'];
             const currentIndex = themes.indexOf(state.theme);
             const nextIndex = (currentIndex + 1) % themes.length;
             applyTheme(themes[nextIndex]);
@@ -618,6 +763,12 @@
                 case 'blue':
                     themeIcon.className = 'ti ti-brand-react';
                     break;
+                case 'azure':
+                    themeIcon.className = 'ti ti-brand-azure';
+                    break;
+                case 'pink':
+                    themeIcon.className = 'ti ti-heart';
+                    break;
                 default:
                     themeIcon.className = 'ti ti-sun';
             }
@@ -626,9 +777,15 @@
         // 响应式处理
         function handleResize() {
             if (window.innerWidth < 768) {
-                document.documentElement.style.setProperty('--sidebar-width', '72px');
+                // 小屏幕默认收起侧边栏
+                if (!state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
+                    toggleSidebar(true);
+                }
             } else {
-                document.documentElement.style.setProperty('--sidebar-width', '280px');
+                // 大屏幕默认展开侧边栏
+                if (state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
+                    toggleSidebar(false);
+                }
             }
         }
 
