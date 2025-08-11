@@ -17,7 +17,7 @@ def generate_directory_tree(root_dir="content", output_file="DIRECTORY_TREE.md")
         return
     
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write("\n\n")
+        f.write("#\n\n")
         
         # 存储所有文件和它们的相对路径
         file_entries = []
@@ -34,7 +34,7 @@ def generate_directory_tree(root_dir="content", output_file="DIRECTORY_TREE.md")
         
         # 按目录层级和文件名排序
         file_entries.sort(key=lambda x: (x[0], x[1].lower()))
-        
+        file_entries.append('by corainly.')
         current_dir = None
         for display_dir, filename, full_path in file_entries:
             # 如果目录改变了，添加目录标题
