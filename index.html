@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 文档</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5/github-markdown.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked@4/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11/lib/core.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github.min.css">
+    <style>
+        :root {
+            --sidebar-width: 300px;
+            --transition-speed: 0.3s;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        #sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: #f7f7f7;
+            border-right: 1px solid #e1e4e8;
+            overflow-y: auto;
+            transition: transform var(--transition-speed) ease;
+            position: fixed;
+            z-index: 100;
+        }
+        
+        #sidebar.collapsed {
+            transform: translateX(calc(var(--sidebar-width) * -1));
+        }
+        
+        #content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 2rem;
+            transition: margin-left var(--transition-speed) ease;
+            max-width: 900px;
+        }
+        
+        #content.full-width {
+            margin-left: 0;
+        }
+        
+        .sidebar-toggle {
+            position: fixed;
+            left: 10px;
+            top: 10px;
+            z-index: 101;
+            background: #f7f7f7;
+            border: 1px solid #e1e4e8;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        
+        .markdown-body {
+            box-sizing: border-box;
+            min-width: 200px;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 45px;
+        }
+        
+        @media (max-width: 767px) {
+            .markdown-body {
+                padding: 15px;
+            }
+        }
+        
+        .directory-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+        
+        .directory-item:hover {
+            background: #e1e4e8;
+        }
+        
+        .directory-item.active {
+            border-left: 3px solid #0366d6;
+            background: #e1e4e81a;
+        }
+        
+        .directory-group {
+            margin-left: 15px;
+        }
+        
+        .directory-header {
+            font-weight: 600;
+            padding: 10px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .directory-header:hover {
+            background: #e1e4e8;
+        }
+        
+        .directory-header::after {
+            content: "▼";
+            font-size: 0.8em;
+            transition: transform var(--transition-speed) ease;
+        }
+        
+        .directory-header.collapsed::after {
+            transform: rotate(-90deg);
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            font-size: 1.5em;
+            color: #586069;
+        }
+    </style>
+</head>
+<body>
+    <button class="sidebar-toggle" id="sidebarToggle">≡</button>
+    
+    <div id="sidebar">
+        <div id="directoryTree"></div>
+    </div>
+    
+    <div id="content" class="markdown-body">
+        <div class="loading">加载中...</div>
+    </div>
+
+    <script>
+        // 配置 marked
+        marked.setOptions({
+            highlight: function(code, lang) {
+                if (hljs.getLanguage(lang)) {
+                    return hljs.highlight(lang, code).value;
+                }
+                return hljs.highlightAuto(code).value;
+            },
+            langPrefix: 'hljs language-',
+            gfm: true,
+            breaks: true
+        });
+
+        // 状态管理
+        const state = {
+            sidebarCollapsed: false,
+            directoryStructure: null,
+            currentFile: null,
+            collapsedGroups: JSON.parse(localStorage.getItem('collapsedGroups')) || {}
+        };
+
+        // DOM 元素
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const content = document.getElementById('content');
+        const directoryTree = document.getElementById('directoryTree');
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 加载目录结构
+            await loadDirectoryTree();
+            
+            // 设置事件监听器
+            setupEventListeners();
+            
+            // 根据 URL 参数加载文件
+            loadFileFromUrl();
+        });
+
+        // 加载目录树
+        async function loadDirectoryTree() {
+            try {
+                const response = await fetch('DIRECTORY_TREE.md');
+                if (!response.ok) throw new Error('无法加载目录树');
+                
+                const text = await response.text();
+                state.directoryStructure = parseDirectoryTree(text);
+                renderDirectoryTree();
+            } catch (error) {
+                console.error('加载目录树失败:', error);
+                directoryTree.innerHTML = `<div style="padding: 15px; color: red;">加载目录树失败: ${error.message}</div>`;
+            }
+        }
+
+        // 解析目录树
+        function parseDirectoryTree(text) {
+            const lines = text.split('\n');
+            const structure = [];
+            let currentGroup = null;
+            
+            for (const line of lines) {
+                if (line.startsWith('# ')) {
+                    // 目录组
+                    const groupName = line.substring(2).trim();
+                    currentGroup = {
+                        name: groupName,
+                        files: []
+                    };
+                    structure.push(currentGroup);
+                } else if (line.startsWith('- [')) {
+                    // 文件项
+                    if (!currentGroup) {
+                        currentGroup = { name: '未分类', files: [] };
+                        structure.push(currentGroup);
+                    }
+                    
+                    const match = line.match(/^- \[(.+?)\]\((.+?)\)/);
+                    if (match) {
+                        currentGroup.files.push({
+                            name: match[1],
+                            path: match[2]
+                        });
+                    }
+                }
+            }
+            
+            return structure;
+        }
+
+        // 渲染目录树
+        function renderDirectoryTree() {
+            if (!state.directoryStructure) return;
+            
+            let html = '';
+            
+            state.directoryStructure.forEach(group => {
+                const isCollapsed = state.collapsedGroups[group.name] === true;
+                
+                html += `
+                    <div class="directory-group">
+                        <div class="directory-header ${isCollapsed ? 'collapsed' : ''}" 
+                             data-group="${group.name}">
+                            ${group.name}
+                        </div>
+                        <div style="${isCollapsed ? 'display: none;' : ''}">
+                            ${group.files.map(file => `
+                                <div class="directory-item ${state.currentFile === file.path ? 'active' : ''}" 
+                                     data-path="${file.path}">
+                                    ${file.name}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            directoryTree.innerHTML = html;
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 侧边栏切换
+            sidebarToggle.addEventListener('click', () => {
+                state.sidebarCollapsed = !state.sidebarCollapsed;
+                sidebar.classList.toggle('collapsed', state.sidebarCollapsed);
+                content.classList.toggle('full-width', state.sidebarCollapsed);
+                sidebarToggle.textContent = state.sidebarCollapsed ? '≡' : '×';
+            });
+            
+            // 目录组点击
+            directoryTree.addEventListener('click', e => {
+                const header = e.target.closest('.directory-header');
+                if (header) {
+                    const groupName = header.dataset.group;
+                    state.collapsedGroups[groupName] = !state.collapsedGroups[groupName];
+                    localStorage.setItem('collapsedGroups', JSON.stringify(state.collapsedGroups));
+                    
+                    const contentDiv = header.nextElementSibling;
+                    if (state.collapsedGroups[groupName]) {
+                        contentDiv.style.display = 'none';
+                        header.classList.add('collapsed');
+                    } else {
+                        contentDiv.style.display = '';
+                        header.classList.remove('collapsed');
+                    }
+                }
+                
+                // 文件项点击
+                const item = e.target.closest('.directory-item');
+                if (item) {
+                    const filePath = item.dataset.path;
+                    loadFile(filePath);
+                    updateActiveItem(filePath);
+                    updateUrl(filePath);
+                }
+            });
+            
+            // 响应式设计 - 小屏幕自动折叠侧边栏
+            function handleResize() {
+                if (window.innerWidth < 768) {
+                    sidebar.classList.add('collapsed');
+                    content.classList.add('full-width');
+                    state.sidebarCollapsed = true;
+                    sidebarToggle.textContent = '≡';
+                }
+            }
+            
+            window.addEventListener('resize', handleResize);
+            handleResize();
+        }
+
+        // 加载文件
+        async function loadFile(filePath) {
+            if (!filePath) {
+                filePath = 'content/index.md';
+                updateUrl(filePath);
+            }
+            
+            state.currentFile = filePath;
+            content.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                const response = await fetch(filePath);
+                if (!response.ok) throw new Error('文件加载失败');
+                
+                const markdown = await response.text();
+                content.innerHTML = marked.parse(markdown);
+            } catch (error) {
+                console.error('加载文件失败:', error);
+                content.innerHTML = `
+                    <div style="color: red;">
+                        <h2>加载文件失败</h2>
+                        <p>${error.message}</p>
+                        <p>文件路径: ${filePath}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 更新活动项
+        function updateActiveItem(filePath) {
+            document.querySelectorAll('.directory-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.path === filePath);
+            });
+        }
+
+        // 从 URL 加载文件
+        function loadFileFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const fileParam = params.get('file');
+            
+            if (fileParam) {
+                // 确保路径以 content/ 开头
+                let filePath = fileParam.startsWith('content/') ? fileParam : `content/${fileParam}`;
+                // 确保有 .md 后缀
+                if (!filePath.endsWith('.md')) filePath += '.md';
+                
+                loadFile(filePath);
+            } else {
+                loadFile('content/index.md');
+            }
+        }
+
+        // 更新 URL
+        function updateUrl(filePath) {
+            // 从路径中移除 content/ 前缀和 .md 后缀
+            let displayPath = filePath.replace(/^content\//, '').replace(/\.md$/, '');
+            
+            const newUrl = `${window.location.pathname}?file=${encodeURIComponent(displayPath)}`;
+            window.history.pushState({ path: newUrl }, '', newUrl);
+        }
+
+        // 处理浏览器前进/后退
+        window.addEventListener('popstate', () => {
+            loadFileFromUrl();
+        });
+    </script>
+</body>
+</html>
