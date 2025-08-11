@@ -1,7 +1,7 @@
 # 目录结构
 
 # 根目录
-- [index.md](./index.md)
+- [index.md](./content/index.md)
 
 # others
-- [other.md](./others/other.md)
+- [other.md](./content/others/other.md)
