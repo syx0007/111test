@@ -17,7 +17,7 @@ def generate_directory_tree(root_dir="content", output_file="DIRECTORY_TREE.md")
         return
     
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write("# 目录结构\n\n")
+        f.write("\n\n")
         
         # 存储所有文件和它们的相对路径
         file_entries = []
