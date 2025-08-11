@@ -1,7 +1,7 @@
 #
 
 # 根目录
-- [choice.md](./content/choice.md)
+- [(从别的地方复制的)choice.md](./content/(从别的地方复制的)choice.md)
 - [index.md](./content/index.md)
 
 # Everything 2 TTML 
