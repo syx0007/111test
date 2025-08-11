@@ -894,9 +894,14 @@
             }
             
             // 更新按钮图标
+            updateSidebarToggleIcon();
+        }
+        
+        // 新增函数：更新侧边栏切换按钮图标
+        function updateSidebarToggleIcon() {
             const icon = sidebarToggle.querySelector('i');
             if (icon) {
-                icon.className = collapsed ? 'ti ti-menu-2' : 'ti ti-x';
+                icon.className = state.sidebarCollapsed ? 'ti ti-menu-2' : 'ti ti-x';
             }
         }
 
@@ -1051,12 +1056,12 @@
             if (window.innerWidth < 768) {
                 // 小屏幕默认收起侧边栏
                 if (!state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
-                    toggleSidebar(true);
+                    toggleSidebar(true, false); // 第二个参数 false 表示不保存到本地存储
                 }
             } else {
                 // 大屏幕默认展开侧边栏
                 if (state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
-                    toggleSidebar(false);
+                    toggleSidebar(false, false); // 第二个参数 false 表示不保存到本地存储
                 }
             }
         }
