@@ -28,27 +28,28 @@ def generate_directory_tree(root_dir="content", output_file="DIRECTORY_TREE.md")
                 if filename.endswith('.md'):  # 只处理Markdown文件
                     file_path = Path(dirpath) / filename
                     rel_path = os.path.relpath(file_path, root_dir)
-                    file_entries.append((dirpath, filename, rel_path))
+                    # 存储目录路径(显示用)和完整路径(链接用)
+                    display_dir = os.path.relpath(dirpath, root_dir)
+                    file_entries.append((display_dir, filename, f"./{root_dir}/{rel_path.replace(os.sep, '/')}"))
         
         # 按目录层级和文件名排序
         file_entries.sort(key=lambda x: (x[0], x[1].lower()))
         
         current_dir = None
-        for dirpath, filename, rel_path in file_entries:
+        for display_dir, filename, full_path in file_entries:
             # 如果目录改变了，添加目录标题
-            if dirpath != current_dir:
+            if display_dir != current_dir:
                 if current_dir is not None:
                     f.write("\n")
                 # 显示相对于root_dir的目录路径
-                rel_dir = os.path.relpath(dirpath, root_dir)
-                if rel_dir == ".":
+                if display_dir == ".":
                     f.write("# 根目录\n")
                 else:
-                    f.write(f"# {rel_dir.replace(os.sep, '/')}\n")
-                current_dir = dirpath
+                    f.write(f"# {display_dir.replace(os.sep, '/')}\n")
+                current_dir = display_dir
             
             # 写入文件项
-            f.write(f"- [{filename}](./content/{rel_path.replace(os.sep, '/')})\n")
+            f.write(f"- [{filename}]({full_path})\n")
         
         print(f"目录树已生成到 {output_file}")
 
