@@ -48,7 +48,7 @@ def generate_directory_tree(root_dir="content", output_file="DIRECTORY_TREE.md")
                 current_dir = dirpath
             
             # 写入文件项
-            f.write(f"- [{filename}](./{rel_path.replace(os.sep, '/')})\n")
+            f.write(f"- [{filename}](./content/{rel_path.replace(os.sep, '/')})\n")
         
         print(f"目录树已生成到 {output_file}")
 
