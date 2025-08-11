@@ -9,4 +9,3 @@
 
 # others
 - [other.md](./content/others/other.md)
-by corainly.
