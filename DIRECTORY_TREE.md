@@ -9,3 +9,6 @@
 
 # others
 - [other.md](./content/others/other.md)
+
+# others/test
+- [test.md](./content/others/test/test.md)
