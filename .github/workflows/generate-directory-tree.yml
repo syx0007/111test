@@ -11,12 +11,10 @@ jobs:
   generate-tree:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 添加写入权限
+      contents: write  # 必需权限
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.MY_PAT }}  # 明确使用GITHUB_TOKEN
-          
+        
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -26,9 +24,41 @@ jobs:
         run: |
           python scripts/generate_directory_tree.py
           
-      - name: Commit and push changes
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add DIRECTORY_TREE.md
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update directory tree" && git push)
+      - name: Commit file via GitHub API
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              // 读取生成的文件内容
+              const content = fs.readFileSync('DIRECTORY_TREE.md', 'utf8');
+              
+              // 检查文件是否存在（获取sha值用于更新）
+              let sha = null;
+              try {
+                const response = await github.rest.repos.getContent({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  path: 'DIRECTORY_TREE.md',
+                  ref: 'main'
+                });
+                sha = response.data.sha;
+              } catch (error) {
+                if (error.status !== 404) throw error;
+              }
+              
+              // 创建或更新文件
+              await github.rest.repos.createOrUpdateFileContents({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: 'DIRECTORY_TREE.md',
+                message: 'Auto-update directory tree',
+                content: Buffer.from(content).toString('base64'),
+                sha: sha,
+                branch: 'main'
+              });
+              
+              console.log('File successfully updated');
+            } catch (error) {
+              core.setFailed(`Action failed: ${error}`);
+            }
