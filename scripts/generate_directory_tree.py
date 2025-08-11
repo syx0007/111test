@@ -34,7 +34,7 @@ def generate_directory_tree(root_dir="content", output_file="DIRECTORY_TREE.md")
         
         # 按目录层级和文件名排序
         file_entries.sort(key=lambda x: (x[0], x[1].lower()))
-        file_entries.append('by corainly.')
+
         current_dir = None
         for display_dir, filename, full_path in file_entries:
             # 如果目录改变了，添加目录标题
@@ -50,7 +50,7 @@ def generate_directory_tree(root_dir="content", output_file="DIRECTORY_TREE.md")
             
             # 写入文件项
             f.write(f"- [{filename}]({full_path})\n")
-        
+        f.write(f'by corainly.')
         print(f"目录树已生成到 {output_file}")
 
 if __name__ == "__main__":
