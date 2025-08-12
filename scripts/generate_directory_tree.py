@@ -49,7 +49,7 @@ def generate_directory_tree(root_dir="content", output_file="DIRECTORY_TREE.md")
                 current_dir = display_dir
             
             # 写入文件项
-            if f"- [{filename}]({full_path})\n" =! - "[index.md](./content/index.md)"：
+            if f"- [{filename}]({full_path})\n" =! - "[index.md](./content/index.md)":
                 f.write(f"- [{filename}]({full_path})\n")
 
         print(f"目录树已生成到 {output_file}")
