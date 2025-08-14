@@ -1240,19 +1240,19 @@
         }
 
         // 响应式处理
-//        function handleResize() {
-//            if (window.innerWidth < 768) {
-//                // 小屏幕默认收起侧边栏
-//                if (!state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
-//                    toggleSidebar(true, false); // 第二个参数 false 表示不保存到本地存储
-//                }
-//            } else {
-//                // 大屏幕默认展开侧边栏
-//                if (state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
-//                    toggleSidebar(false, false); // 第二个参数 false 表示不保存到本地存储
-//                }
-//            }
-//        }
+        function handleResize() {
+            if (window.innerWidth < 768) {
+                // 小屏幕默认收起侧边栏
+                if (!state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
+                    toggleSidebar(true, false); // 第二个参数 false 表示不保存到本地存储
+                }
+            } else {
+                // 大屏幕默认展开侧边栏
+                if (state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
+                    toggleSidebar(false, false); // 第二个参数 false 表示不保存到本地存储
+                }
+            }
+        }
 
         // 处理浏览器前进/后退
         window.addEventListener('popstate', () => {
