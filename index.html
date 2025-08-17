@@ -624,6 +624,36 @@
                 left: 12px;
             }
         }
+        /* 访问统计样式 */
+        .visit-stats {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            font-size: 14px;
+            color: var(--text-color);
+            opacity: 0.8;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .visit-stats-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .visit-stats-item .icon {
+            color: var(--primary-color);
+        }
+        
+        @media (max-width: 600px) {
+            .visit-stats {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1135,9 +1165,34 @@
                 
                 // 添加淡入动画
                 setTimeout(() => {
-                    mainContent.innerHTML = marked.parse(markdown);
+                    // 添加统计HTML
+                    const statsHTML = `
+                        <div class="visit-stats">
+                            <div class="visit-stats-item">
+                                <div class="icon"><i class="ti ti-eye"></i></div>
+                                <div>本文总阅读量 <span id="busuanzi_value_page_pv"></span> 次</div>
+                            </div>
+                            <div class="visit-stats-item">
+                                <div class="icon"><i class="ti ti-users"></i></div>
+                                <div>本文总访客量 <span id="busuanzi_value_page_uv"></span> 人</div>
+                            </div>
+                            <div class="visit-stats-item">
+                                <div class="icon"><i class="ti ti-world"></i></div>
+                                <div>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</div>
+                            </div>
+                            <div class="visit-stats-item">
+                                <div class="icon"><i class="ti ti-user-plus"></i></div>
+                                <div>本站总访客数 <span id="busuanzi_value_site_uv"></span> 人</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    mainContent.innerHTML = marked.parse(markdown) + statsHTML;
                     mainContent.style.opacity = '1';
                     mainContent.style.animation = 'fadeIn 0.3s ease-out';
+                    
+                    // 加载不蒜子统计脚本
+                    loadBusuanziScript();
                 }, 150);
                 
                 state.currentFile = filePath;
@@ -1149,14 +1204,45 @@
                 showNotFoundPage();
             }
         }
+        
+        // 加载不蒜子统计脚本
+        function loadBusuanziScript() {
+            if (window.busuanziLoaded) return;
+            
+            const script = document.createElement('script');
+            script.src = '//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js';
+            script.async = true;
+            script.onload = () => {
+                window.busuanziLoaded = true;
+            };
+            document.body.appendChild(script);
+        }
 
-        // 显示404页面
         function showNotFoundPage() {
             const notFoundContent = notFoundTemplate.content.cloneNode(true);
             mainContent.innerHTML = '';
             mainContent.appendChild(notFoundContent);
+            
+            // 添加统计到404页面
+            const statsHTML = `
+                <div class="visit-stats">
+                    <div class="visit-stats-item">
+                        <div class="icon"><i class="ti ti-world"></i></div>
+                        <div>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</div>
+                    </div>
+                    <div class="visit-stats-item">
+                        <div class="icon"><i class="ti ti-user-plus"></i></div>
+                        <div>本站总访客数 <span id="busuanzi_value_site_uv"></span> 人</div>
+                    </div>
+                </div>
+            `;
+            mainContent.innerHTML += statsHTML;
+            
             mainContent.style.opacity = '1';
             mainContent.style.animation = 'fadeIn 0.3s ease-out';
+            
+            // 加载不蒜子统计脚本
+            loadBusuanziScript();
         }
 
         // 更新活动项
