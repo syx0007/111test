@@ -10,6 +10,157 @@
     <script src="https://cdn.jsdelivr.net/npm/highlight.js@11/lib/core.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons@latest/iconfont/tabler-icons.min.css">
+    <script>
+        // 修改后的loadFile函数
+        async function loadFile(filePath) {
+            if (!filePath) {
+                filePath = 'index.md';
+                updateUrl(filePath);
+            }
+            
+            // 显示加载状态
+            mainContent.style.opacity = '0';
+            
+            try {
+                // 确保路径正确
+                let fullPath = filePath;
+                if (!filePath.startsWith('http') && !filePath.startsWith('/') && !filePath.startsWith('./')) {
+                    fullPath = './content/' + filePath;
+                }
+                
+                const response = await fetch(fullPath);
+                if (!response.ok) throw new Error('文件加载失败');
+                
+                const markdown = await response.text();
+                
+                // 添加淡入动画
+                setTimeout(() => {
+                    // 更美观的访问统计卡片
+                    const statsHTML = `
+                        <div class="stats-card">
+                            <div class="stats-title">
+                                <i class="ti ti-chart-line"></i>
+                                <span>访问统计</span>
+                            </div>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-label">
+                                        <i class="ti ti-eye"></i>
+                                        <span>本文阅读量</span>
+                                    </div>
+                                    <div class="stat-value loading" id="busuanzi_value_page_pv"></div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">
+                                        <i class="ti ti-users"></i>
+                                        <span>本文访客</span>
+                                    </div>
+                                    <div class="stat-value loading" id="busuanzi_value_page_uv"></div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">
+                                        <i class="ti ti-chart-bar"></i>
+                                        <span>全站访问</span>
+                                    </div>
+                                    <div class="stat-value loading" id="busuanzi_value_site_pv"></div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">
+                                        <i class="ti ti-chart-line"></i>
+                                        <span>全站访客</span>
+                                    </div>
+                                    <div class="stat-value loading" id="busuanzi_value_site_uv"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    mainContent.innerHTML = marked.parse(markdown) + statsHTML;
+                    mainContent.style.opacity = '1';
+                    mainContent.style.animation = 'fadeIn 0.3s ease-out';
+                    
+                    // 强制重新加载不蒜子统计，并设置正确的页面标识
+                    reloadBusuanzi(filePath);
+                }, 150);
+                
+                state.currentFile = filePath;
+                
+                // 更新侧边栏选中状态
+                updateActiveItem(filePath);
+            } catch (error) {
+                console.error('加载文件失败:', error);
+                showNotFoundPage();
+            }
+        }
+
+        // 强制重新加载不蒜子统计，并设置页面标识
+        function reloadBusuanzi(filePath) {
+            // 移除旧的统计脚本
+            const oldScript = document.querySelector('script[src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"]');
+            if (oldScript) {
+                oldScript.remove();
+            }
+            
+            // 创建iframe来重置不蒜子的统计
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = 'about:blank';
+            document.body.appendChild(iframe);
+            
+            // 在iframe中加载不蒜子脚本
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            iframeDoc.open();
+            iframeDoc.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"><\/script>
+                    <script>
+                        // 设置页面标识为当前文件路径
+                        window.busuanzi_page_path = '${filePath}';
+                    <\/script>
+                </head>
+                <body>
+                </body>
+                </html>
+            `);
+            iframeDoc.close();
+            
+            // 主页面也加载不蒜子脚本
+            const script = document.createElement('script');
+            script.src = 'https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js';
+            script.defer = true;
+            script.onload = function() {
+                console.log('不蒜子统计已重新加载');
+                // 设置主页面标识
+                window.busuanzi_page_path = filePath;
+                // 移除加载动画
+                document.querySelectorAll('.stat-value').forEach(el => {
+                    el.classList.remove('loading');
+                });
+                
+                // 移除iframe
+                setTimeout(() => {
+                    iframe.remove();
+                }, 1000);
+            };
+            document.body.appendChild(script);
+        }
+
+        // 更新URL函数
+        function updateUrl(filePath) {
+            // 从路径中移除 .md 后缀
+            let displayPath = filePath.replace(/\.md$/, '');
+            
+            // 添加随机参数确保浏览器识别为新页面
+            const randomParam = Date.now();
+            const newUrl = `${window.location.pathname}?file=${encodeURIComponent(displayPath)}&_=${randomParam}`;
+            window.history.pushState({ path: newUrl }, '', newUrl);
+            
+            // 更新页面标题
+            updatePageTitle(displayPath);
+        }
+    </script>
     <style>
         :root {
             /* 基础颜色变量 */
