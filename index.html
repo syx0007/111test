@@ -10,14 +10,16 @@
     <script src="https://cdn.jsdelivr.net/npm/highlight.js@11/lib/core.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons@latest/iconfont/tabler-icons.min.css">
-    <script defer src="https://vercount.one/js"></script>
     <style>
         :root {
+            /* 基础颜色变量 */
             --primary-color: #0067c0;
             --sidebar-width: 280px;
             --header-height: 48px;
             --transition-speed: 0.3s;
             --border-radius: 8px;
+            
+            /* 浅色主题 */
             --bg-color: #ffffff;
             --sidebar-bg: #f6f6f6;
             --text-color: #242424;
@@ -25,11 +27,16 @@
             --hover-bg: #f0f0f0;
             --active-bg: #e5f1fb;
             --card-bg: #f9f9f9;
+            
+            /* 加载动画颜色 */
             --loading-color: var(--primary-color);
+            
+            /* 滚动条颜色 */
             --scrollbar-thumb: rgba(0, 0, 0, 0.2);
             --scrollbar-track: transparent;
         }
 
+        /* 深色主题 */
         [data-theme="dark"] {
             --primary-color: #60a5fa;
             --bg-color: #1e1e1e;
@@ -44,6 +51,7 @@
             --scrollbar-track: transparent;
         }
 
+        /* 蓝色主题 */
         [data-theme="blue"] {
             --primary-color: #1a73e8;
             --bg-color: #f8fafc;
@@ -57,6 +65,7 @@
             --scrollbar-track: transparent;
         }
 
+        /* 蔚蓝档案主题 */
         [data-theme="ba"] {
             --primary-color: #5d9cec;
             --bg-color: #f5f7fa;
@@ -70,6 +79,7 @@
             --scrollbar-track: transparent;
         }
 
+        /* 粉色主题 */
         [data-theme="pink"] {
             --primary-color: #ff6b8b;
             --bg-color: #fff5f7;
@@ -122,7 +132,7 @@
             background-clip: content-box;
         }
 
-        /* 侧边栏样式 */
+        /* 侧边栏样式 - Win11风格 */
         #sidebar {
             width: var(--sidebar-width);
             height: 100vh;
@@ -351,6 +361,85 @@
             width: 100%;
         }
 
+        /* 访问统计卡片样式 */
+        .stats-card {
+            margin-top: 40px;
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+        }
+        
+        .stats-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .stats-title i {
+            color: var(--primary-color);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            background: var(--hover-bg);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        
+        .stat-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-color);
+            opacity: 0.8;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .stat-label i {
+            font-size: 14px;
+            color: var(--primary-color);
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        /* 加载动画 */
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 0.3; }
+        }
+
+        .stat-value.loading {
+            animation: pulse 1.5s ease-in-out infinite;
+            background: var(--border-color);
+            width: 80%;
+            height: 24px;
+            border-radius: 4px;
+        }
+
         /* 页脚样式 */
         .footer {
             padding: 20px;
@@ -568,104 +657,6 @@
             border-radius: var(--border-radius);
         }
 
-        /* 访问统计样式 - 美化版 */
-        .visit-stats {
-            margin: 60px 0 30px;
-            padding: 25px;
-            background-color: var(--card-bg);
-            border-radius: var(--border-radius);
-            border: 1px solid var(--border-color);
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-            font-size: 15px;
-            color: var(--text-color);
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 15px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .visit-stats::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background: var(--primary-color);
-        }
-
-        .visit-stats-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 12px;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-        }
-
-        .visit-stats-item:hover {
-            background-color: var(--hover-bg);
-            transform: translateY(-2px);
-        }
-
-        .visit-stats-item .icon {
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--primary-color);
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-
-        .visit-stats-item .label {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .visit-stats-item .count {
-            font-weight: 600;
-            color: var(--primary-color);
-            font-size: 16px;
-            margin-top: 2px;
-        }
-
-        /* 暗色主题适配 */
-        [data-theme="dark"] .visit-stats {
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        /* 加载动画 */
-        @keyframes pulse {
-            0%, 100% { opacity: 0.6; }
-            50% { opacity: 1; }
-        }
-
-        .visit-stats .count[data-default="加载中..."] {
-            display: inline-block;
-            min-width: 3em;
-            background: var(--hover-bg);
-            border-radius: 4px;
-            height: 1.2em;
-            animation: pulse 1.5s infinite;
-        }
-
-        /* 移动端适配 */
-        @media (max-width: 600px) {
-            .visit-stats {
-                grid-template-columns: 1fr;
-                padding: 20px 15px;
-                gap: 12px;
-            }
-            
-            .visit-stats-item {
-                padding: 8px 10px;
-            }
-        }
-
         /* 动画 */
         @keyframes spin {
             to { transform: rotate(360deg); }
@@ -712,6 +703,13 @@
                 left: 12px;
             }
         }
+
+        /* 响应式调整 */
+        @media (max-width: 600px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -731,7 +729,9 @@
     <div id="sidebar">
         <div class="sidebar-header">
             <div class="logo">
+                <!-- 可以替换为自定义图标 -->
                 <img src="material/logo.gif" alt="Logo">
+                <!-- <i class="ti ti-book"></i> -->
             </div>
             <div class="title">文档</div>
         </div>
@@ -779,6 +779,7 @@
             <div class="name">蓝色</div>
         </div>
         <div class="theme-option" data-theme="ba">
+            <!-- <div class="icon"><i class="ti ti-brand-ba"></i></div> -->
             <div class="icon"><img src="material/icon.png" style="width: auto; height: 100%; max-width: 100%;" alt="蔚蓝"></div>
             <div class="name">蔚蓝</div>
         </div>
@@ -821,8 +822,7 @@
             sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true',
             searchQuery: '',
             themePanelVisible: false,
-            collapsedFolders: JSON.parse(localStorage.getItem('collapsedFolders')) || {},
-            vercountLoaded: false
+            collapsedFolders: JSON.parse(localStorage.getItem('collapsedFolders')) || {}
         };
 
         // DOM 元素
@@ -1220,36 +1220,42 @@
                 const markdown = await response.text();
                 
                 // 添加淡入动画
-                setTimeout(async () => {
-                    // 生成统计HTML
+                setTimeout(() => {
+                    // 更美观的访问统计卡片
                     const statsHTML = `
-                        <div class="visit-stats">
-                            <div class="visit-stats-item">
-                                <div class="icon"><i class="ti ti-eye"></i></div>
-                                <div class="label">
-                                    本文阅读量
-                                    <span class="count vc-page-views" data-default="加载中...">0</span>
-                                </div>
+                        <div class="stats-card">
+                            <div class="stats-title">
+                                <i class="ti ti-chart-line"></i>
+                                <span>访问统计</span>
                             </div>
-                            <div class="visit-stats-item">
-                                <div class="icon"><i class="ti ti-users"></i></div>
-                                <div class="label">
-                                    本文访客
-                                    <span class="count vc-page-visitors" data-default="加载中...">0</span>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-label">
+                                        <i class="ti ti-eye"></i>
+                                        <span>本文阅读量</span>
+                                    </div>
+                                    <div class="stat-value loading" id="busuanzi_value_page_pv"></div>
                                 </div>
-                            </div>
-                            <div class="visit-stats-item">
-                                <div class="icon"><i class="ti ti-world"></i></div>
-                                <div class="label">
-                                    全站访问
-                                    <span class="count vc-site-views" data-default="加载中...">0</span>
+                                <div class="stat-item">
+                                    <div class="stat-label">
+                                        <i class="ti ti-users"></i>
+                                        <span>本文访客</span>
+                                    </div>
+                                    <div class="stat-value loading" id="busuanzi_value_page_uv"></div>
                                 </div>
-                            </div>
-                            <div class="visit-stats-item">
-                                <div class="icon"><i class="ti ti-user-plus"></i></div>
-                                <div class="label">
-                                    全站访客
-                                    <span class="count vc-site-visitors" data-default="加载中...">0</span>
+                                <div class="stat-item">
+                                    <div class="stat-label">
+                                        <i class="ti ti-chart-bar"></i>
+                                        <span>全站访问</span>
+                                    </div>
+                                    <div class="stat-value loading" id="busuanzi_value_site_pv"></div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">
+                                        <i class="ti ti-chart-line"></i>
+                                        <span>全站访客</span>
+                                    </div>
+                                    <div class="stat-value loading" id="busuanzi_value_site_uv"></div>
                                 </div>
                             </div>
                         </div>
@@ -1259,9 +1265,8 @@
                     mainContent.style.opacity = '1';
                     mainContent.style.animation = 'fadeIn 0.3s ease-out';
                     
-                    // 初始化Vercount统计
-                    await initVercountStats();
-                    
+                    // 强制重新加载不蒜子统计
+                    reloadBusuanzi();
                 }, 150);
                 
                 state.currentFile = filePath;
@@ -1274,51 +1279,26 @@
             }
         }
 
-        // 初始化Vercount统计
-        async function initVercountStats() {
-            return new Promise((resolve) => {
-                // 先手动设置默认值
-                document.querySelectorAll('.vc-page-views, .vc-page-visitors, .vc-site-views, .vc-site-visitors').forEach(el => {
-                    el.textContent = el.dataset.default || '0';
-                });
-
-                // 检查是否已加载
-                if (window.vercountAPI) {
-                    window.vercountAPI.track();
-                    setTimeout(() => updateStatsDisplay(), 500);
-                    resolve();
-                    return;
-                }
-                
-                // 设置重试机制
-                let retries = 0;
-                const maxRetries = 5;
-                
-                const checkInterval = setInterval(() => {
-                    if (window.vercountAPI) {
-                        clearInterval(checkInterval);
-                        window.vercountAPI.track();
-                        setTimeout(() => updateStatsDisplay(), 500);
-                        resolve();
-                    } else if (retries >= maxRetries) {
-                        clearInterval(checkInterval);
-                        console.warn('Vercount统计加载超时');
-                        resolve();
-                    }
-                    retries++;
-                }, 300);
-            });
-        }
-
-        // 更新统计显示
-        function updateStatsDisplay() {
-            const stats = window.vercountAPI?.getStats();
-            if (stats) {
-                if (stats.pageViews) document.querySelector('.vc-page-views').textContent = stats.pageViews;
-                if (stats.pageVisitors) document.querySelector('.vc-page-visitors').textContent = stats.pageVisitors;
-                if (stats.siteViews) document.querySelector('.vc-site-views').textContent = stats.siteViews;
-                if (stats.siteVisitors) document.querySelector('.vc-site-visitors').textContent = stats.siteVisitors;
+        // 强制重新加载不蒜子统计
+        function reloadBusuanzi() {
+            // 移除旧的统计脚本
+            const oldScript = document.querySelector('script[src="https://vercount.one/js"]');
+            if (oldScript) {
+                oldScript.remove();
             }
+            
+            // 创建新的统计脚本
+            const script = document.createElement('script');
+            script.src = 'https://vercount.one/js';
+            script.defer = true;
+            script.onload = function() {
+                console.log('不蒜子统计已重新加载');
+                // 移除加载动画
+                document.querySelectorAll('.stat-value').forEach(el => {
+                    el.classList.remove('loading');
+                });
+            };
+            document.body.appendChild(script);
         }
 
         // 显示404页面
@@ -1326,33 +1306,8 @@
             const notFoundContent = notFoundTemplate.content.cloneNode(true);
             mainContent.innerHTML = '';
             mainContent.appendChild(notFoundContent);
-            
-            // 添加统计到404页面
-            const statsHTML = `
-                <div class="visit-stats">
-                    <div class="visit-stats-item">
-                        <div class="icon"><i class="ti ti-world"></i></div>
-                        <div class="label">
-                            全站访问
-                            <span class="count vc-site-views" data-default="加载中...">0</span>
-                        </div>
-                    </div>
-                    <div class="visit-stats-item">
-                        <div class="icon"><i class="ti ti-user-plus"></i></div>
-                        <div class="label">
-                            全站访客
-                            <span class="count vc-site-visitors" data-default="加载中...">0</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            mainContent.innerHTML += statsHTML;
-            
             mainContent.style.opacity = '1';
             mainContent.style.animation = 'fadeIn 0.3s ease-out';
-            
-            // 初始化Vercount统计
-            initVercountStats();
         }
 
         // 更新活动项
@@ -1390,6 +1345,15 @@
             
             const newUrl = `${window.location.pathname}?file=${encodeURIComponent(displayPath)}`;
             window.history.pushState({ path: newUrl }, '', newUrl);
+            
+            // 更新页面标题
+            updatePageTitle(displayPath);
+        }
+
+        // 更新页面标题
+        function updatePageTitle(filePath) {
+            const fileName = filePath.split('/').pop();
+            document.title = `${fileName} - 文档`;
         }
 
         // 主题功能
@@ -1440,12 +1404,12 @@
             if (window.innerWidth < 768) {
                 // 小屏幕默认收起侧边栏
                 if (!state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
-                    toggleSidebar(true, false);
+                    toggleSidebar(true, false); // 第二个参数 false 表示不保存到本地存储
                 }
             } else {
                 // 大屏幕默认展开侧边栏
                 if (state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
-                    toggleSidebar(false, false);
+                    toggleSidebar(false, false); // 第二个参数 false 表示不保存到本地存储
                 }
             }
         }
