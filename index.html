@@ -732,6 +732,7 @@
             currentFile: null,
             directoryStructure: null,
             theme: localStorage.getItem('theme') || 'system',
+            collapsedGroups: JSON.parse(localStorage.getItem('collapsedGroups')) || {},
             sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true',
             searchQuery: '',
             themePanelVisible: false,
@@ -751,7 +752,6 @@
         const sidebarToggle = document.getElementById('sidebarToggle');
         const searchInput = document.getElementById('searchInput');
         const notFoundTemplate = document.getElementById('notFoundTemplate');
-        const themeOptions = document.querySelectorAll('.theme-option');
     
         // 初始化
         document.addEventListener('DOMContentLoaded', async () => {
@@ -760,7 +760,7 @@
             fetchHitokoto();
             await loadDirectoryTree();
             setupEventListeners();
-            loadFileFromPath();
+            handleInitialRouting();
             
             setTimeout(() => {
                 loadingScreen.style.opacity = '0';
@@ -768,111 +768,128 @@
             }, 500);
         });
     
-        // 获取一言
+        // ====================== 路由处理 ======================
+        function handleInitialRouting() {
+            const path = window.location.pathname;
+            const params = new URLSearchParams(window.location.search);
+            
+            // 处理 /path/to/file.md 格式
+            if (path.endsWith('.md')) {
+                const segments = path.split('/');
+                const filePath = segments[segments.length - 1];
+                loadFile(filePath);
+                updateActiveItem(filePath);
+                return;
+            }
+            
+            // 处理 ?file=path 格式（兼容旧链接）
+            const fileParam = params.get('file');
+            if (fileParam) {
+                let filePath = fileParam.endsWith('.md') ? fileParam : `${fileParam}.md`;
+                const cleanPath = window.location.pathname.replace(/\/$/, '');
+                const newUrl = `${cleanPath}/${filePath}`;
+                
+                // 替换URL但不触发重载
+                window.history.replaceState({}, '', newUrl);
+                loadFile(filePath);
+                updateActiveItem(filePath);
+                return;
+            }
+            
+            // 默认加载首页
+            loadFile('index.md');
+            updateActiveItem('index.md');
+        }
+    
+        function updateUrl(filePath) {
+            // 移除可能的重复.md后缀
+            filePath = filePath.replace(/(\.md)+$/, '.md');
+            
+            // 构建干净的URL路径
+            const cleanBase = window.location.pathname.replace(/\/[^/]+$/, '').replace(/\/$/, '');
+            const newUrl = `${cleanBase}/${filePath}`;
+            
+            // 更新URL而不触发页面重载
+            window.history.pushState({ filePath }, '', newUrl);
+        }
+    
+        // ====================== 核心功能 ======================
         async function fetchHitokoto() {
             try {
                 const response = await fetch('https://v1.hitokoto.cn/');
                 const data = await response.json();
                 hitokotoElement.textContent = `"${data.hitokoto}" —— ${data.from}`;
-            } catch (error) {
+            } catch {
                 hitokotoElement.textContent = '"学而不思则罔，思而不学则殆。" —— 孔子';
             }
         }
     
-        // 加载目录树
         async function loadDirectoryTree() {
             try {
                 const response = await fetch('DIRECTORY_TREE.md');
-                if (!response.ok) throw new Error('无法加载目录树');
+                if (!response.ok) throw new Error('Directory tree not found');
                 
                 const text = await response.text();
                 state.directoryStructure = parseDirectoryTree(text);
                 renderDirectoryTree();
             } catch (error) {
-                console.error('加载目录树失败:', error);
-                directoryTree.innerHTML = `<div style="padding: 15px; color: red;">加载目录树失败: ${error.message}</div>`;
+                console.error('Failed to load directory:', error);
+                directoryTree.innerHTML = `
+                    <div style="padding: 20px; color: var(--text-color);">
+                        <i class="ti ti-alert-triangle"></i> 无法加载目录: ${error.message}
+                    </div>
+                `;
             }
         }
     
-        // 解析目录树 - 增强对特殊字符的处理
         function parseDirectoryTree(text) {
             const lines = text.split('\n');
             const structure = {};
-            
-            for (const line of lines) {
+            let currentGroup = '';
+    
+            lines.forEach(line => {
                 if (line.startsWith('# ')) {
-                    const groupName = line.substring(2).trim();
-                    if (!structure[groupName]) {
-                        structure[groupName] = [];
+                    currentGroup = line.substring(2).trim();
+                    if (!structure[currentGroup]) {
+                        structure[currentGroup] = [];
                     }
                 } else if (line.startsWith('- [')) {
-                    // 增强的正则表达式，处理文件名中的特殊字符
-                    const match = line.match(/^- \[(.*?)\]\((.*?)\)/);
-                    if (match) {
-                        const fileName = match[1];
+                    const match = line.match(/^- \[(.+?)\]\((.+?)\)/);
+                    if (match && currentGroup) {
                         let filePath = match[2];
-                        
-                        // 解码URI组件，处理特殊字符
-                        try {
-                            filePath = decodeURI(filePath);
-                        } catch (e) {
-                            console.warn('URI解码失败:', e);
-                        }
-                        
-                        if (filePath.startsWith('./content/')) {
-                            filePath = filePath.substring(10);
-                        } else if (filePath.startsWith('content/')) {
-                            filePath = filePath.substring(8);
-                        }
-                        
-                        let currentGroup = '';
-                        for (let i = lines.indexOf(line) - 1; i >= 0; i--) {
-                            if (lines[i].startsWith('# ')) {
-                                currentGroup = lines[i].substring(2).trim();
-                                break;
-                            }
-                        }
-                        
-                        if (!structure[currentGroup]) {
-                            structure[currentGroup] = [];
-                        }
-                        
+                        // 标准化路径
+                        filePath = filePath.replace(/^\.?\//, '').replace(/^content\//, '');
                         structure[currentGroup].push({
-                            name: fileName,
-                            path: filePath
+                            name: match[1],
+                            path: filePath.endsWith('.md') ? filePath : `${filePath}.md`
                         });
                     }
                 }
-            }
-            
+            });
+    
             return buildNestedStructure(structure);
         }
     
-        // 构建嵌套目录结构
         function buildNestedStructure(flatStructure) {
             const nestedStructure = {};
             
-            Object.keys(flatStructure).forEach(groupName => {
-                const groupParts = groupName.split('/');
+            Object.keys(flatStructure).forEach(groupPath => {
+                const parts = groupPath.split('/');
                 let currentLevel = nestedStructure;
                 
-                groupParts.forEach((part, index) => {
+                parts.forEach((part, index) => {
                     if (!currentLevel[part]) {
                         currentLevel[part] = {
                             _type: 'folder',
                             _name: part,
-                            _path: groupParts.slice(0, index + 1).join('/'),
+                            _path: parts.slice(0, index + 1).join('/'),
                             _items: []
                         };
                     }
                     
-                    if (index === groupParts.length - 1) {
-                        flatStructure[groupName].forEach(file => {
-                            const existingFile = currentLevel[part]._items.find(
-                                item => item.path === file.path
-                            );
-                            
-                            if (!existingFile) {
+                    if (index === parts.length - 1) {
+                        flatStructure[groupPath].forEach(file => {
+                            if (!currentLevel[part]._items.some(item => item.path === file.path)) {
                                 currentLevel[part]._items.push({
                                     _type: 'file',
                                     ...file
@@ -888,7 +905,6 @@
             return nestedStructure;
         }
     
-        // 渲染目录树 - 增强对特殊字符的处理
         function renderDirectoryTree() {
             if (!state.directoryStructure) return;
             
@@ -902,45 +918,32 @@
             `;
             
             html += renderNestedItems(state.directoryStructure);
-            
-            directoryTree.innerHTML = html;
-            
-            if (state.searchQuery && directoryTree.children.length === 0) {
-                directoryTree.innerHTML = `
-                    <div style="padding: 20px; text-align: center; color: var(--text-color); opacity: 0.7;">
-                        没有找到匹配的文档
-                    </div>
-                `;
-            }
+            directoryTree.innerHTML = html || `
+                <div style="padding: 20px; text-align: center; color: var(--text-color); opacity: 0.7;">
+                    ${state.searchQuery ? '没有找到匹配的文档' : '目录为空'}
+                </div>
+            `;
         }
     
-        // 递归渲染嵌套项目 - 特殊字符处理
         function renderNestedItems(items, level = 0) {
-            let html = '';
-            
-            Object.keys(items).forEach(key => {
+            return Object.keys(items).map(key => {
                 const item = items[key];
                 
                 if (item._type === 'folder') {
-                    const shouldShowFolder = !state.searchQuery || 
+                    const shouldShow = !state.searchQuery || 
                         item._name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
                         hasMatchingItems(item._items, state.searchQuery.toLowerCase());
                     
-                    if (!shouldShowFolder) return;
+                    if (!shouldShow) return '';
                     
-                    const isCollapsed = state.collapsedFolders[item._path] !== undefined ? 
-                                      state.collapsedFolders[item._path] : 
-                                      level > 0;
+                    const isCollapsed = state.collapsedFolders[item._path] ?? level > 0;
                     
-                    // 对文件夹名进行HTML转义
-                    const escapedFolderName = escapeHtml(item._name);
-                    
-                    html += `
+                    return `
                         <div class="folder" style="padding-left: ${level * 12}px;">
                             <div class="folder-title ${isCollapsed ? 'collapsed' : ''}" 
-                                 data-folder-path="${escapeHtml(item._path)}">
+                                 data-folder-path="${item._path}">
                                 <div class="icon"><i class="ti ti-folder"></i></div>
-                                <div class="label">${escapedFolderName}</div>
+                                <div class="label">${item._name}</div>
                                 <div class="chevron"><i class="ti ti-chevron-down"></i></div>
                             </div>
                             <div class="folder-content" style="${isCollapsed ? 'display: none;' : ''}">
@@ -949,64 +952,119 @@
                         </div>
                     `;
                 } else if (item._type === 'file') {
-                    const shouldShowFile = !state.searchQuery || 
+                    const shouldShow = !state.searchQuery || 
                         item.name.toLowerCase().includes(state.searchQuery.toLowerCase());
                     
-                    if (shouldShowFile) {
-                        const isActive = state.currentFile === item.path || 
-                                       (state.currentFile && state.currentFile.replace('.md', '') === item.path.replace('.md', ''));
-                        
-                        // 对文件名进行HTML转义
-                        const escapedFileName = escapeHtml(item.name.replace('.md', ''));
-                        
-                        html += `
-                            <div class="nav-item ${isActive ? 'active' : ''}" 
-                                 data-path="${escapeHtml(item.path)}"
-                                 style="padding-left: ${(level + 1) * 12 + 20}px;">
-                                <div class="icon"><i class="ti ti-file-text"></i></div>
-                                <div class="label">${escapedFileName}</div>
-                            </div>
-                        `;
-                    }
+                    if (!shouldShow) return '';
+                    
+                    const isActive = state.currentFile === item.path || 
+                                   (state.currentFile && state.currentFile.replace('.md', '') === item.path.replace('.md', ''));
+                    
+                    return `
+                        <div class="nav-item ${isActive ? 'active' : ''}" 
+                             data-path="${item.path}"
+                             style="padding-left: ${(level + 1) * 12 + 20}px;">
+                            <div class="icon"><i class="ti ti-file-text"></i></div>
+                            <div class="label">${item.name.replace('.md', '')}</div>
+                        </div>
+                    `;
                 }
-            });
-            
-            return html;
+                return '';
+            }).join('');
         }
     
-        // HTML转义函数，防止XSS并正确显示特殊字符
-        function escapeHtml(unsafe) {
-            if (!unsafe) return '';
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-    
-        // 检查文件夹或其子项是否匹配搜索
         function hasMatchingItems(items, query) {
-            for (const key in items) {
+            return Object.keys(items).some(key => {
                 const item = items[key];
-                
                 if (item._type === 'folder') {
-                    if (item._name.toLowerCase().includes(query)) return true;
-                    if (hasMatchingItems(item._items, query)) return true;
-                } else if (item._type === 'file') {
-                    if (item.name.toLowerCase().includes(query)) return true;
+                    return item._name.toLowerCase().includes(query) || 
+                           hasMatchingItems(item._items, query);
                 }
+                return item.name.toLowerCase().includes(query);
+            });
+        }
+    
+        // ====================== 文件加载 ======================
+        async function loadFile(filePath) {
+            if (!filePath) filePath = 'index.md';
+            
+            mainContent.style.opacity = '0';
+            state.currentFile = filePath;
+            
+            try {
+                // 支持直接访问 content/ 下的文件
+                const fullPath = filePath.startsWith('content/') ? filePath : `content/${filePath}`;
+                const response = await fetch(fullPath);
+                
+                if (!response.ok) throw new Error('File not found');
+                
+                const markdown = await response.text();
+                
+                setTimeout(() => {
+                    mainContent.innerHTML = marked.parse(markdown);
+                    mainContent.style.opacity = '1';
+                    mainContent.style.animation = 'fadeIn 0.3s ease-out';
+                    
+                    // 自动为所有站内链接添加处理
+                    document.querySelectorAll('#main-content a[href]').forEach(link => {
+                        const href = link.getAttribute('href');
+                        if (href.endsWith('.md') || href.startsWith('#')) {
+                            link.addEventListener('click', handleInternalLink);
+                        }
+                    });
+                }, 150);
+            } catch (error) {
+                console.error('Load failed:', error);
+                showNotFoundPage();
+            }
+        }
+    
+        function handleInternalLink(event) {
+            const href = this.getAttribute('href');
+            
+            if (href.startsWith('#')) {
+                return; // 允许锚点跳转
             }
             
-            return false;
+            event.preventDefault();
+            
+            // 处理相对路径
+            let filePath = href;
+            if (filePath.startsWith('./')) {
+                const currentDir = state.currentFile.split('/').slice(0, -1).join('/');
+                filePath = `${currentDir}/${filePath.substring(2)}`;
+            }
+            
+            // 确保有.md后缀
+            if (!filePath.endsWith('.md')) filePath += '.md';
+            
+            loadFile(filePath);
+            updateActiveItem(filePath);
+            updateUrl(filePath);
         }
     
-        // 设置事件监听器
+        function showNotFoundPage() {
+            const clone = notFoundTemplate.content.cloneNode(true);
+            clone.getElementById('goHomeLink').addEventListener('click', (e) => {
+                e.preventDefault();
+                loadFile('index.md');
+                updateActiveItem('index.md');
+                updateUrl('index.md');
+            });
+            
+            mainContent.innerHTML = '';
+            mainContent.appendChild(clone);
+            mainContent.style.opacity = '1';
+            mainContent.style.animation = 'fadeIn 0.3s ease-out';
+        }
+    
+        // ====================== UI 交互 ======================
         function setupEventListeners() {
+            // 导航点击
             directoryTree.addEventListener('click', e => {
-                const item = e.target.closest('.nav-item');
-                if (item) {
-                    const filePath = item.dataset.path;
+                const navItem = e.target.closest('.nav-item');
+                if (navItem) {
+                    const filePath = navItem.dataset.path;
                     loadFile(filePath);
                     updateActiveItem(filePath);
                     updateUrl(filePath);
@@ -1020,211 +1078,78 @@
                 }
             });
             
+            // 主题切换
             themeSwitcher.addEventListener('click', toggleThemePanel);
-            
-            themeOptions.forEach(option => {
+            document.querySelectorAll('.theme-option').forEach(option => {
                 option.addEventListener('click', () => {
-                    const theme = option.dataset.theme;
-                    applyTheme(theme);
-                    toggleThemePanel();
+                    applyTheme(option.dataset.theme);
+                    hideThemePanel();
                 });
             });
-            
-            document.addEventListener('click', (e) => {
+            document.addEventListener('click', e => {
                 if (!themeSwitcher.contains(e.target) && !themePanel.contains(e.target)) {
                     hideThemePanel();
                 }
             });
             
-            sidebarToggle.addEventListener('click', () => {
-                toggleSidebar(!state.sidebarCollapsed);
-            });
-            
+            // 侧边栏
+            sidebarToggle.addEventListener('click', () => toggleSidebar(!state.sidebarCollapsed));
             searchInput.addEventListener('input', (e) => {
                 state.searchQuery = e.target.value;
                 renderDirectoryTree();
             });
             
+            // 浏览器导航
+            window.addEventListener('popstate', () => handleInitialRouting());
             window.addEventListener('resize', handleResize);
             handleResize();
         }
     
-        // 从 URL 路径加载文件 - 增强特殊字符处理
-        function loadFileFromPath() {
-            // 获取当前路径，处理GitHub Pages的仓库名情况
-            let path = window.location.pathname;
-            
-            // 如果部署在项目页（username.github.io/repo/）
-            const repoPath = path.split('/')[1];
-            if (repoPath && repoPath !== '') {
-                path = path.substring(repoPath.length + 2);
-            }
-            
-            // 处理首页
-            if (path === '' || path === '/') {
-                loadFile('index.md');
-                updateActiveItem('index.md');
-                return;
-            }
-            
-            // 移除结尾的斜杠
-            if (path.endsWith('/')) {
-                path = path.slice(0, -1);
-            }
-            
-            // 解码URI组件，处理特殊字符
-            try {
-                path = decodeURIComponent(path);
-            } catch (e) {
-                console.warn('URI解码失败:', e);
-            }
-            
-            // 构建文件路径
-            let filePath = path + '.md';
-            
-            // 加载文件
-            loadFile(filePath);
-            updateActiveItem(filePath);
-        }
-    
-        // 加载文件 - 增强特殊字符处理
-        async function loadFile(filePath) {
-            if (!filePath) {
-                filePath = 'index.md';
-                updateUrl(filePath);
-            }
-            
-            mainContent.style.opacity = '0';
-            
-            try {
-                let fullPath;
-                if (filePath.startsWith('http') || filePath.startsWith('/')) {
-                    fullPath = filePath;
-                } else {
-                    fullPath = './content/' + filePath;
-                }
-                
-                // 对路径进行编码，确保特殊字符正确处理
-                fullPath = encodeURI(fullPath).replace(/'/g, "%27");
-                
-                const response = await fetch(fullPath);
-                if (!response.ok) throw new Error('文件加载失败');
-                
-                const markdown = await response.text();
-                
-                setTimeout(() => {
-                    mainContent.innerHTML = marked.parse(markdown);
-                    mainContent.style.opacity = '1';
-                    mainContent.style.animation = 'fadeIn 0.3s ease-out';
-                }, 150);
-                
-                state.currentFile = filePath;
-                updateActiveItem(filePath);
-            } catch (error) {
-                console.error('加载文件失败:', error);
-                showNotFoundPage();
-            }
-        }
-    
-        // 显示404页面
-        function showNotFoundPage() {
-            const notFoundContent = notFoundTemplate.content.cloneNode(true);
-            mainContent.innerHTML = '';
-            mainContent.appendChild(notFoundContent);
-            mainContent.style.opacity = '1';
-            mainContent.style.animation = 'fadeIn 0.3s ease-out';
-            
-            // 添加返回首页事件
-            const goHomeLink = mainContent.querySelector('#goHomeLink');
-            if (goHomeLink) {
-                goHomeLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    loadFile('index.md');
-                    updateActiveItem('index.md');
-                    updateUrl('index.md');
-                });
-            }
-        }
-    
-        // 更新活动项
-        function updateActiveItem(filePath) {
-            document.querySelectorAll('.nav-item').forEach(item => {
-                const itemPath = item.dataset.path;
-                const isActive = filePath === itemPath || 
-                                 (filePath && filePath.replace('.md', '') === itemPath.replace('.md', ''));
-                item.classList.toggle('active', isActive);
-            });
-        }
-    
-        // 更新 URL - 增强特殊字符处理
-        function updateUrl(filePath) {
-            let displayPath = filePath.replace(/^content\//, '').replace(/\.md$/, '');
-            
-            if (displayPath === 'index') {
-                displayPath = '';
-            }
-            
-            // 处理GitHub Pages的仓库路径
-            const repoName = window.location.pathname.split('/')[1];
-            const basePath = repoName ? `/${repoName}/` : '/';
-            
-            // 对路径进行编码，确保特殊字符正确处理
-            const encodedPath = encodeURIComponent(displayPath)
-                .replace(/'/g, "%27")
-                .replace(/\(/g, "%28")
-                .replace(/\)/g, "%29")
-                .replace(/\[/g, "%5B")
-                .replace(/\]/g, "%5D");
-            
-            const newUrl = window.location.origin + basePath + encodedPath;
-            window.history.pushState({ path: newUrl }, '', newUrl);
-        }
-    
-        // 切换侧边栏状态
-        function toggleSidebar(collapsed, saveToStorage = true) {
-            state.sidebarCollapsed = collapsed;
-            document.body.classList.toggle('sidebar-collapsed', collapsed);
-            
-            if (saveToStorage) {
-                localStorage.setItem('sidebarCollapsed', collapsed);
-            }
-            
-            updateSidebarToggleIcon();
-        }
-        
-        // 更新侧边栏切换按钮图标
-        function updateSidebarToggleIcon() {
-            const icon = sidebarToggle.querySelector('i');
-            if (icon) {
-                icon.className = state.sidebarCollapsed ? 'ti ti-menu-2' : 'ti ti-x';
-            }
-        }
-    
-        // 切换文件夹折叠状态
         function toggleFolderCollapse(folderPath, folderTitle) {
-            const wasCollapsed = state.collapsedFolders[folderPath] !== undefined ? 
-                               state.collapsedFolders[folderPath] : 
-                               true;
-            
+            const wasCollapsed = state.collapsedFolders[folderPath] ?? true;
             state.collapsedFolders[folderPath] = !wasCollapsed;
             localStorage.setItem('collapsedFolders', JSON.stringify(state.collapsedFolders));
             
             folderTitle.classList.toggle('collapsed', !wasCollapsed);
+            const content = folderTitle.nextElementSibling;
+            if (content) content.style.display = wasCollapsed ? 'block' : 'none';
+        }
+    
+        function updateActiveItem(filePath) {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                const isActive = item.dataset.path === filePath || 
+                               (filePath && item.dataset.path.replace('.md', '') === filePath.replace('.md', ''));
+                item.classList.toggle('active', isActive);
+            });
+        }
+    
+        function toggleSidebar(collapsed, save = true) {
+            state.sidebarCollapsed = collapsed;
+            document.body.classList.toggle('sidebar-collapsed', collapsed);
+            if (save) localStorage.setItem('sidebarCollapsed', collapsed);
             
-            const contentElement = folderTitle.nextElementSibling;
-            if (contentElement) {
-                contentElement.style.display = wasCollapsed ? 'block' : 'none';
+            const icon = sidebarToggle.querySelector('i');
+            if (icon) icon.className = collapsed ? 'ti ti-menu-2' : 'ti ti-x';
+        }
+    
+        function handleResize() {
+            if (window.innerWidth < 768) {
+                if (!state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
+                    toggleSidebar(true, false);
+                }
+            } else if (state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
+                toggleSidebar(false, false);
             }
         }
     
-        // 主题功能
+        // ====================== 主题管理 ======================
         function applyTheme(theme) {
             state.theme = theme;
             localStorage.setItem('theme', theme);
             
             if (theme === 'system') {
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+                const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
             } else {
                 document.documentElement.setAttribute('data-theme', theme);
             }
@@ -1232,56 +1157,21 @@
             updateThemeOptions();
         }
     
-        // 更新主题选项状态
         function updateThemeOptions() {
-            themeOptions.forEach(option => {
+            document.querySelectorAll('.theme-option').forEach(option => {
                 option.classList.toggle('active', option.dataset.theme === state.theme);
             });
         }
     
-        // 切换主题面板
         function toggleThemePanel() {
-            if (state.themePanelVisible) {
-                hideThemePanel();
-            } else {
-                showThemePanel();
-            }
-        }
-    
-        function showThemePanel() {
-            themePanel.classList.add('show');
-            state.themePanelVisible = true;
+            state.themePanelVisible = !state.themePanelVisible;
+            themePanel.classList.toggle('show', state.themePanelVisible);
         }
     
         function hideThemePanel() {
-            themePanel.classList.remove('show');
             state.themePanelVisible = false;
+            themePanel.classList.remove('show');
         }
-    
-        // 响应式处理
-        function handleResize() {
-            if (window.innerWidth < 768) {
-                if (!state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
-                    toggleSidebar(true, false);
-                }
-            } else {
-                if (state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
-                    toggleSidebar(false, false);
-                }
-            }
-        }
-    
-        // 处理浏览器前进/后退
-        window.addEventListener('popstate', () => {
-            loadFileFromPath();
-        });
-    
-        // 监听系统主题变化
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-            if (state.theme === 'system') {
-                applyTheme('system');
-            }
-        });
     </script>
 </body>
 </html>
