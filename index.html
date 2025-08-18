@@ -772,7 +772,7 @@
             // 设置事件监听器
             setupEventListeners();
             
-            // 根据 URL 参数加载文件
+            // 根据 URL 加载文件
             loadFileFromUrl();
             
             // 隐藏加载动画
@@ -1144,10 +1144,50 @@
                 
                 // 更新侧边栏选中状态
                 updateActiveItem(filePath);
+                
+                // 更新页面标题
+                updatePageTitle(filePath);
             } catch (error) {
                 console.error('加载文件失败:', error);
                 showNotFoundPage();
             }
+        }
+
+        // 更新页面标题
+        function updatePageTitle(filePath) {
+            if (filePath === 'index.md') {
+                document.title = '文档';
+                return;
+            }
+            
+            // 从目录结构中查找文件名
+            const fileName = findFileNameInStructure(filePath);
+            if (fileName) {
+                document.title = `${fileName} - 文档`;
+            } else {
+                document.title = '文档';
+            }
+        }
+
+        // 从目录结构中查找文件名
+        function findFileNameInStructure(filePath) {
+            if (!state.directoryStructure) return null;
+            
+            // 递归查找
+            function searchInItems(items) {
+                for (const key in items) {
+                    const item = items[key];
+                    if (item._type === 'file' && item.path === filePath) {
+                        return item.name.replace('.md', '');
+                    } else if (item._type === 'folder') {
+                        const result = searchInItems(item._items);
+                        if (result) return result;
+                    }
+                }
+                return null;
+            }
+            
+            return searchInItems(state.directoryStructure);
         }
 
         // 显示404页面
@@ -1157,6 +1197,7 @@
             mainContent.appendChild(notFoundContent);
             mainContent.style.opacity = '1';
             mainContent.style.animation = 'fadeIn 0.3s ease-out';
+            document.title = '页面未找到 - 文档';
         }
 
         // 更新活动项
@@ -1171,19 +1212,41 @@
 
         // 从 URL 加载文件
         function loadFileFromUrl() {
-            const params = new URLSearchParams(window.location.search);
-            const fileParam = params.get('file');
+            // 获取当前路径
+            const path = window.location.pathname;
             
-            if (fileParam) {
-                // 确保路径正确
-                let filePath = fileParam;
-                if (!filePath.endsWith('.md')) filePath += '.md';
+            // 如果路径不是根路径，则尝试加载对应文件
+            if (path !== '/' && !path.endsWith('index.html')) {
+                // 从路径中提取文件名
+                let filePath = path.split('/').pop();
+                
+                // 确保有.md后缀
+                if (!filePath.endsWith('.md')) {
+                    filePath += '.md';
+                }
                 
                 loadFile(filePath);
                 updateActiveItem(filePath);
             } else {
-                loadFile('index.md');
-                updateActiveItem('index.md');
+                // 检查是否有查询参数（兼容旧链接）
+                const params = new URLSearchParams(window.location.search);
+                const fileParam = params.get('file');
+                
+                if (fileParam) {
+                    // 确保路径正确
+                    let filePath = fileParam;
+                    if (!filePath.endsWith('.md')) filePath += '.md';
+                    
+                    loadFile(filePath);
+                    updateActiveItem(filePath);
+                    
+                    // 更新URL为路径形式
+                    updateUrl(filePath);
+                } else {
+                    // 默认加载首页
+                    loadFile('index.md');
+                    updateActiveItem('index.md');
+                }
             }
         }
 
@@ -1192,8 +1255,15 @@
             // 从路径中移除 .md 后缀
             let displayPath = filePath.replace(/\.md$/, '');
             
-            const newUrl = `${window.location.pathname}?file=${encodeURIComponent(displayPath)}`;
-            window.history.pushState({ path: newUrl }, '', newUrl);
+            // 如果是首页，使用根路径
+            if (displayPath === 'index') {
+                const newUrl = `${window.location.pathname}`;
+                window.history.pushState({ path: newUrl }, '', newUrl);
+            } else {
+                // 否则使用路径形式
+                const newUrl = `${window.location.pathname}${displayPath}`;
+                window.history.pushState({ path: newUrl }, '', newUrl);
+            }
         }
 
         // 主题功能
