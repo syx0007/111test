@@ -12,14 +12,11 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons@latest/iconfont/tabler-icons.min.css">
     <style>
         :root {
-            /* 基础颜色变量 */
             --primary-color: #0067c0;
             --sidebar-width: 280px;
             --header-height: 48px;
             --transition-speed: 0.3s;
             --border-radius: 8px;
-            
-            /* 浅色主题 */
             --bg-color: #ffffff;
             --sidebar-bg: #f6f6f6;
             --text-color: #242424;
@@ -27,16 +24,11 @@
             --hover-bg: #f0f0f0;
             --active-bg: #e5f1fb;
             --card-bg: #f9f9f9;
-            
-            /* 加载动画颜色 */
             --loading-color: var(--primary-color);
-            
-            /* 滚动条颜色 */
             --scrollbar-thumb: rgba(0, 0, 0, 0.2);
             --scrollbar-track: transparent;
         }
 
-        /* 深色主题 */
         [data-theme="dark"] {
             --primary-color: #60a5fa;
             --bg-color: #1e1e1e;
@@ -51,7 +43,6 @@
             --scrollbar-track: transparent;
         }
 
-        /* 蓝色主题 */
         [data-theme="blue"] {
             --primary-color: #1a73e8;
             --bg-color: #f8fafc;
@@ -65,7 +56,6 @@
             --scrollbar-track: transparent;
         }
 
-        /* 蔚蓝档案主题 */
         [data-theme="ba"] {
             --primary-color: #5d9cec;
             --bg-color: #f5f7fa;
@@ -79,7 +69,6 @@
             --scrollbar-track: transparent;
         }
 
-        /* 粉色主题 */
         [data-theme="pink"] {
             --primary-color: #ff6b8b;
             --bg-color: #fff5f7;
@@ -109,7 +98,6 @@
             overflow-x: hidden;
         }
 
-        /* 自定义滚动条 */
         ::-webkit-scrollbar {
             width: 10px;
             height: 10px;
@@ -132,7 +120,6 @@
             background-clip: content-box;
         }
 
-        /* 侧边栏样式 - Win11风格 */
         #sidebar {
             width: var(--sidebar-width);
             height: 100vh;
@@ -176,11 +163,6 @@
             height: 34px;
             object-fit: contain;
             border-radius: 3px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            flex-shrink: 0;
         }
 
         .sidebar-header .title {
@@ -215,24 +197,6 @@
             flex: 1;
             overflow-y: auto;
             padding: 8px 0;
-        }
-
-        .nav-section {
-            margin-bottom: 8px;
-        }
-
-        .nav-section-title {
-            padding: 8px 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-color);
-            opacity: 0.7;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
         }
 
         .nav-item {
@@ -284,7 +248,6 @@
             text-overflow: ellipsis;
         }
 
-        /* 文件夹样式 */
         .folder {
             padding-left: 20px;
         }
@@ -305,23 +268,6 @@
             background-color: var(--hover-bg);
         }
 
-        .folder-title .icon {
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            transition: transform 0.2s;
-        }
-
-        .folder-title .label {
-            flex: 1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
         .folder-title .chevron {
             transition: transform 0.2s;
         }
@@ -339,7 +285,6 @@
             max-height: 0;
         }
 
-        /* 内容区域 */
         #content {
             flex: 1;
             margin-left: var(--sidebar-width);
@@ -361,7 +306,6 @@
             width: 100%;
         }
 
-        /* 页脚样式 */
         .footer {
             padding: 20px;
             text-align: center;
@@ -372,7 +316,6 @@
             margin-top: auto;
         }
 
-        /* 404 页面样式 */
         .not-found-container {
             display: flex;
             flex-direction: column;
@@ -418,7 +361,6 @@
             opacity: 0.9;
         }
 
-        /* 加载动画 */
         .loading-container {
             position: fixed;
             top: 0;
@@ -458,7 +400,6 @@
             text-align: center;
         }
 
-        /* 主题切换按钮 */
         .theme-switcher {
             position: fixed;
             bottom: 20px;
@@ -476,7 +417,6 @@
             border: 1px solid var(--border-color);
         }
 
-        /* 主题选择面板 */
         .theme-panel {
             position: fixed;
             bottom: 80px;
@@ -491,8 +431,6 @@
             visibility: hidden;
             transform: translateY(10px);
             transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            background-color: rgba(var(--card-bg-rgb), 0.8);
         }
 
         .theme-panel.show {
@@ -537,7 +475,6 @@
             flex: 1;
         }
 
-        /* 侧边栏切换按钮 */
         .sidebar-toggle {
             position: fixed;
             top: 12px;
@@ -567,7 +504,6 @@
             left: 12px;
         }
 
-        /* Markdown内容样式 */
         .markdown-body {
             background-color: var(--bg-color);
             color: var(--text-color);
@@ -578,7 +514,6 @@
             border-radius: var(--border-radius);
         }
 
-        /* 动画 */
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -593,12 +528,6 @@
             to { height: 100%; }
         }
 
-        @keyframes slideIn {
-            from { transform: translateY(10px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        /* 响应式设计 */
         @media (max-width: 768px) {
             :root {
                 --sidebar-width: 280px;
@@ -617,10 +546,6 @@
             }
 
             .sidebar-toggle {
-                left: 12px;
-            }
-
-            .sidebar-collapsed .sidebar-toggle {
                 left: 12px;
             }
         }
@@ -710,7 +635,7 @@
     </template>
 
     <script>
-        // ====================== 初始化配置 ======================
+        // 配置 marked
         marked.setOptions({
             highlight: function(code, lang) {
                 if (hljs.getLanguage(lang)) {
@@ -723,7 +648,7 @@
             breaks: true
         });
 
-        // ====================== 状态管理 ======================
+        // 状态管理
         const state = {
             currentFile: null,
             directoryStructure: null,
@@ -733,23 +658,7 @@
             collapsedFolders: JSON.parse(localStorage.getItem('collapsedFolders')) || {}
         };
 
-        // ====================== DOM 元素 ======================
-        const elements = {
-            loadingScreen: document.getElementById('loadingScreen'),
-            sidebar: document.getElementById('sidebar'),
-            content: document.getElementById('content'),
-            directoryTree: document.getElementById('directoryTree'),
-            mainContent: document.getElementById('main-content'),
-            themeSwitcher: document.getElementById('themeSwitcher'),
-            themePanel: document.getElementById('themePanel'),
-            themeIcon: document.getElementById('themeIcon'),
-            hitokoto: document.getElementById('hitokoto'),
-            sidebarToggle: document.getElementById('sidebarToggle'),
-            searchInput: document.getElementById('searchInput'),
-            notFoundTemplate: document.getElementById('notFoundTemplate')
-        };
-
-        // ====================== 路由系统 ======================
+        // 路由处理器
         const router = {
             init() {
                 this.handleInitialRouting();
@@ -790,7 +699,6 @@
 
             getCleanPath() {
                 let path = decodeURIComponent(window.location.pathname);
-                // 处理Netlify的特殊路径
                 if (path.startsWith('/.netlify/')) {
                     path = path.replace('/.netlify/functions/', '/');
                 }
@@ -811,7 +719,8 @@
             },
 
             loadContent(filePath) {
-                elements.mainContent.style.opacity = '0';
+                const mainContent = document.getElementById('main-content');
+                mainContent.style.opacity = '0';
                 state.currentFile = this.normalizePath(filePath);
 
                 fetch(`content/${state.currentFile}`)
@@ -820,8 +729,8 @@
                         return response.text();
                     })
                     .then(markdown => {
-                        elements.mainContent.innerHTML = marked.parse(markdown);
-                        elements.mainContent.style.opacity = '1';
+                        mainContent.innerHTML = marked.parse(markdown);
+                        mainContent.style.opacity = '1';
                         this.updateActiveNav();
                         this.bindInternalLinks();
                     })
@@ -859,18 +768,19 @@
             },
 
             showNotFound() {
-                const clone = elements.notFoundTemplate.content.cloneNode(true);
+                const clone = document.getElementById('notFoundTemplate').content.cloneNode(true);
                 clone.getElementById('goHomeLink').addEventListener('click', (e) => {
                     e.preventDefault();
                     this.navigateTo('index.md');
                 });
-                elements.mainContent.innerHTML = '';
-                elements.mainContent.appendChild(clone);
-                elements.mainContent.style.opacity = '1';
+                const mainContent = document.getElementById('main-content');
+                mainContent.innerHTML = '';
+                mainContent.appendChild(clone);
+                mainContent.style.opacity = '1';
             }
         };
 
-        // ====================== 目录系统 ======================
+        // 目录系统
         const directory = {
             async load() {
                 try {
@@ -882,7 +792,7 @@
                     this.render();
                 } catch (error) {
                     console.error('加载目录树失败:', error);
-                    elements.directoryTree.innerHTML = `
+                    document.getElementById('directoryTree').innerHTML = `
                         <div style="padding: 15px; color: var(--text-color);">
                             <i class="ti ti-alert-triangle"></i> 加载目录树失败: ${error.message}
                         </div>
@@ -962,7 +872,7 @@
                     ${this.renderItems(state.directoryStructure)}
                 `;
                 
-                elements.directoryTree.innerHTML = html || `
+                document.getElementById('directoryTree').innerHTML = html || `
                     <div style="padding: 20px; text-align: center; color: var(--text-color); opacity: 0.7;">
                         ${state.searchQuery ? '没有找到匹配的文档' : '目录为空'}
                     </div>
@@ -1027,14 +937,12 @@
             }
         };
 
-        // ====================== UI 控制 ======================
+        // UI 控制器
         const ui = {
             init() {
                 this.setupEventListeners();
                 this.applyTheme(state.theme);
                 this.toggleSidebar(state.sidebarCollapsed, false);
-                
-                // 获取一言
                 this.fetchHitokoto();
             },
 
@@ -1042,10 +950,10 @@
                 fetch('https://v1.hitokoto.cn/')
                     .then(response => response.json())
                     .then(data => {
-                        elements.hitokoto.textContent = `"${data.hitokoto}" —— ${data.from}`;
+                        document.getElementById('hitokoto').textContent = `"${data.hitokoto}" —— ${data.from}`;
                     })
                     .catch(() => {
-                        elements.hitokoto.textContent = '"学而不思则罔，思而不学则殆。" —— 孔子';
+                        document.getElementById('hitokoto').textContent = '"学而不思则罔，思而不学则殆。" —— 孔子';
                     });
             },
 
@@ -1070,7 +978,7 @@
                 document.body.classList.toggle('sidebar-collapsed', collapsed);
                 if (save) localStorage.setItem('sidebarCollapsed', collapsed);
                 
-                const icon = elements.sidebarToggle.querySelector('i');
+                const icon = document.getElementById('sidebarToggle').querySelector('i');
                 if (icon) icon.className = collapsed ? 'ti ti-menu-2' : 'ti ti-x';
             },
 
@@ -1086,7 +994,7 @@
 
             toggleThemePanel() {
                 state.themePanelVisible = !state.themePanelVisible;
-                elements.themePanel.classList.toggle('show', state.themePanelVisible);
+                document.getElementById('themePanel').classList.toggle('show', state.themePanelVisible);
             },
 
             handleResize() {
@@ -1097,7 +1005,7 @@
 
             setupEventListeners() {
                 // 目录点击
-                elements.directoryTree.addEventListener('click', (e) => {
+                document.getElementById('directoryTree').addEventListener('click', (e) => {
                     const item = e.target.closest('.nav-item');
                     if (item) {
                         router.navigateTo(item.dataset.path);
@@ -1111,16 +1019,16 @@
                 });
 
                 // 主题切换
-                elements.themeSwitcher.addEventListener('click', () => this.toggleThemePanel());
+                document.getElementById('themeSwitcher').addEventListener('click', () => this.toggleThemePanel());
                 document.addEventListener('click', (e) => {
-                    if (!elements.themeSwitcher.contains(e.target) && 
-                        !elements.themePanel.contains(e.target)) {
-                        elements.themePanel.classList.remove('show');
+                    if (!document.getElementById('themeSwitcher').contains(e.target) && 
+                        !document.getElementById('themePanel').contains(e.target)) {
+                        document.getElementById('themePanel').classList.remove('show');
                     }
                 });
 
                 // 搜索
-                elements.searchInput.addEventListener('input', (e) => {
+                document.getElementById('searchInput').addEventListener('input', (e) => {
                     state.searchQuery = e.target.value;
                     directory.render();
                 });
@@ -1130,16 +1038,16 @@
             }
         };
 
-        // ====================== 初始化 ======================
+        // 初始化
         document.addEventListener('DOMContentLoaded', async () => {
             ui.init();
             await directory.load();
             router.init();
             
             setTimeout(() => {
-                elements.loadingScreen.style.opacity = '0';
+                document.getElementById('loadingScreen').style.opacity = '0';
                 setTimeout(() => {
-                    elements.loadingScreen.style.display = 'none';
+                    document.getElementById('loadingScreen').style.display = 'none';
                 }, 500);
             }, 800);
         });
