@@ -11,5 +11,5 @@
 
 [[redirects]]
   from = "/*.md"
-  to = "/index.html?file=:splat"
+  to = "/?file=:splat"
   status = 200
