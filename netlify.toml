@@ -1,0 +1,15 @@
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/content/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/*.md"
+  to = "/index.html?file=:splat"
+  status = 200
