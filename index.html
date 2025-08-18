@@ -714,464 +714,370 @@
     </template>
 
     <script>
-        // 配置 marked
+        // ====================== 初始化配置 ======================
         marked.setOptions({
-            highlight: function(code, lang) {
-                if (hljs.getLanguage(lang)) {
-                    return hljs.highlight(lang, code).value;
-                }
-                return hljs.highlightAuto(code).value;
-            },
+            highlight: (code, lang) => hljs.getLanguage(lang) 
+                ? hljs.highlight(lang, code).value 
+                : hljs.highlightAuto(code).value,
             langPrefix: 'hljs language-',
             gfm: true,
             breaks: true
         });
     
-        // 状态管理
+        // ====================== 状态管理 ======================
         const state = {
             currentFile: null,
             directoryStructure: null,
             theme: localStorage.getItem('theme') || 'system',
-            collapsedGroups: JSON.parse(localStorage.getItem('collapsedGroups')) || {},
             sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true',
             searchQuery: '',
-            themePanelVisible: false,
             collapsedFolders: JSON.parse(localStorage.getItem('collapsedFolders')) || {}
         };
     
-        // DOM 元素
-        const loadingScreen = document.getElementById('loadingScreen');
-        const sidebar = document.getElementById('sidebar');
-        const content = document.getElementById('content');
-        const directoryTree = document.getElementById('directoryTree');
-        const mainContent = document.getElementById('main-content');
-        const themeSwitcher = document.getElementById('themeSwitcher');
-        const themePanel = document.getElementById('themePanel');
-        const themeIcon = document.getElementById('themeIcon');
-        const hitokotoElement = document.getElementById('hitokoto');
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const searchInput = document.getElementById('searchInput');
-        const notFoundTemplate = document.getElementById('notFoundTemplate');
-    
-        // 初始化
-        document.addEventListener('DOMContentLoaded', async () => {
-            applyTheme(state.theme);
-            toggleSidebar(state.sidebarCollapsed, false);
-            fetchHitokoto();
-            await loadDirectoryTree();
-            setupEventListeners();
-            handleInitialRouting();
-            
-            setTimeout(() => {
-                loadingScreen.style.opacity = '0';
-                loadingScreen.style.visibility = 'hidden';
-            }, 500);
-        });
-    
-        // ====================== 路由处理 ======================
-        function handleInitialRouting() {
-            const path = window.location.pathname;
-            const params = new URLSearchParams(window.location.search);
-            
-            // 处理 /path/to/file.md 格式
-            if (path.endsWith('.md')) {
-                const segments = path.split('/');
-                const filePath = segments[segments.length - 1];
-                loadFile(filePath);
-                updateActiveItem(filePath);
-                return;
-            }
-            
-            // 处理 ?file=path 格式（兼容旧链接）
-            const fileParam = params.get('file');
-            if (fileParam) {
-                let filePath = fileParam.endsWith('.md') ? fileParam : `${fileParam}.md`;
-                const cleanPath = window.location.pathname.replace(/\/$/, '');
-                const newUrl = `${cleanPath}/${filePath}`;
-                
-                // 替换URL但不触发重载
-                window.history.replaceState({}, '', newUrl);
-                loadFile(filePath);
-                updateActiveItem(filePath);
-                return;
-            }
-            
-            // 默认加载首页
-            loadFile('index.md');
-            updateActiveItem('index.md');
-        }
-    
-        function updateUrl(filePath) {
-            // 移除可能的重复.md后缀
-            filePath = filePath.replace(/(\.md)+$/, '.md');
-            
-            // 构建干净的URL路径
-            const cleanBase = window.location.pathname.replace(/\/[^/]+$/, '').replace(/\/$/, '');
-            const newUrl = `${cleanBase}/${filePath}`;
-            
-            // 更新URL而不触发页面重载
-            window.history.pushState({ filePath }, '', newUrl);
-        }
+        // ====================== DOM 元素 ======================
+        const dom = {
+            loadingScreen: document.getElementById('loadingScreen'),
+            mainContent: document.getElementById('main-content'),
+            directoryTree: document.getElementById('directoryTree'),
+            searchInput: document.getElementById('searchInput'),
+            notFoundTemplate: document.getElementById('notFoundTemplate')
+        };
     
         // ====================== 核心功能 ======================
-        async function fetchHitokoto() {
-            try {
-                const response = await fetch('https://v1.hitokoto.cn/');
-                const data = await response.json();
-                hitokotoElement.textContent = `"${data.hitokoto}" —— ${data.from}`;
-            } catch {
-                hitokotoElement.textContent = '"学而不思则罔，思而不学则殆。" —— 孔子';
+        const utils = {
+            // 标准化文件路径（处理特殊字符和编码）
+            normalizePath: (path) => {
+                return decodeURIComponent(path)
+                    .replace(/^content\//, '')
+                    .replace(/%5B/g, '[')
+                    .replace(/%5D/g, ']')
+                    .replace(/\.md$/i, '') + '.md';
+            },
+    
+            // 生成安全URL路径
+            makeSafeUrl: (path) => {
+                return encodeURI(path)
+                    .replace(/\[/g, '%5B')
+                    .replace(/\]/g, '%5D');
+            },
+    
+            // 检查是否为Markdown文件
+            isMarkdownFile: (path) => {
+                return path.match(/\.md$/i);
             }
-        }
+        };
     
-        async function loadDirectoryTree() {
-            try {
-                const response = await fetch('DIRECTORY_TREE.md');
-                if (!response.ok) throw new Error('Directory tree not found');
-                
-                const text = await response.text();
-                state.directoryStructure = parseDirectoryTree(text);
-                renderDirectoryTree();
-            } catch (error) {
-                console.error('Failed to load directory:', error);
-                directoryTree.innerHTML = `
-                    <div style="padding: 20px; color: var(--text-color);">
-                        <i class="ti ti-alert-triangle"></i> 无法加载目录: ${error.message}
-                    </div>
-                `;
-            }
-        }
+        // ====================== 路由系统 ======================
+        const router = {
+            init() {
+                window.addEventListener('popstate', () => this.handleRouting());
+                this.handleRouting();
+            },
     
-        function parseDirectoryTree(text) {
-            const lines = text.split('\n');
-            const structure = {};
-            let currentGroup = '';
+            handleRouting() {
+                const path = window.location.pathname;
+                const params = new URLSearchParams(window.location.search);
     
-            lines.forEach(line => {
-                if (line.startsWith('# ')) {
-                    currentGroup = line.substring(2).trim();
-                    if (!structure[currentGroup]) {
-                        structure[currentGroup] = [];
-                    }
-                } else if (line.startsWith('- [')) {
-                    const match = line.match(/^- \[(.+?)\]\((.+?)\)/);
-                    if (match && currentGroup) {
-                        let filePath = match[2];
-                        // 标准化路径
-                        filePath = filePath.replace(/^\.?\//, '').replace(/^content\//, '');
-                        structure[currentGroup].push({
-                            name: match[1],
-                            path: filePath.endsWith('.md') ? filePath : `${filePath}.md`
-                        });
-                    }
-                }
-            });
-    
-            return buildNestedStructure(structure);
-        }
-    
-        function buildNestedStructure(flatStructure) {
-            const nestedStructure = {};
-            
-            Object.keys(flatStructure).forEach(groupPath => {
-                const parts = groupPath.split('/');
-                let currentLevel = nestedStructure;
-                
-                parts.forEach((part, index) => {
-                    if (!currentLevel[part]) {
-                        currentLevel[part] = {
-                            _type: 'folder',
-                            _name: part,
-                            _path: parts.slice(0, index + 1).join('/'),
-                            _items: []
-                        };
-                    }
-                    
-                    if (index === parts.length - 1) {
-                        flatStructure[groupPath].forEach(file => {
-                            if (!currentLevel[part]._items.some(item => item.path === file.path)) {
-                                currentLevel[part]._items.push({
-                                    _type: 'file',
-                                    ...file
-                                });
-                            }
-                        });
-                    }
-                    
-                    currentLevel = currentLevel[part]._items;
-                });
-            });
-            
-            return nestedStructure;
-        }
-    
-        function renderDirectoryTree() {
-            if (!state.directoryStructure) return;
-            
-            let html = `
-                <div class="nav-section">
-                    <div class="nav-item ${!state.currentFile ? 'active' : ''}" data-path="index.md">
-                        <div class="icon"><i class="ti ti-home"></i></div>
-                        <div class="label">首页</div>
-                    </div>
-                </div>
-            `;
-            
-            html += renderNestedItems(state.directoryStructure);
-            directoryTree.innerHTML = html || `
-                <div style="padding: 20px; text-align: center; color: var(--text-color); opacity: 0.7;">
-                    ${state.searchQuery ? '没有找到匹配的文档' : '目录为空'}
-                </div>
-            `;
-        }
-    
-        function renderNestedItems(items, level = 0) {
-            return Object.keys(items).map(key => {
-                const item = items[key];
-                
-                if (item._type === 'folder') {
-                    const shouldShow = !state.searchQuery || 
-                        item._name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
-                        hasMatchingItems(item._items, state.searchQuery.toLowerCase());
-                    
-                    if (!shouldShow) return '';
-                    
-                    const isCollapsed = state.collapsedFolders[item._path] ?? level > 0;
-                    
-                    return `
-                        <div class="folder" style="padding-left: ${level * 12}px;">
-                            <div class="folder-title ${isCollapsed ? 'collapsed' : ''}" 
-                                 data-folder-path="${item._path}">
-                                <div class="icon"><i class="ti ti-folder"></i></div>
-                                <div class="label">${item._name}</div>
-                                <div class="chevron"><i class="ti ti-chevron-down"></i></div>
-                            </div>
-                            <div class="folder-content" style="${isCollapsed ? 'display: none;' : ''}">
-                                ${renderNestedItems(item._items, level + 1)}
-                            </div>
-                        </div>
-                    `;
-                } else if (item._type === 'file') {
-                    const shouldShow = !state.searchQuery || 
-                        item.name.toLowerCase().includes(state.searchQuery.toLowerCase());
-                    
-                    if (!shouldShow) return '';
-                    
-                    const isActive = state.currentFile === item.path || 
-                                   (state.currentFile && state.currentFile.replace('.md', '') === item.path.replace('.md', ''));
-                    
-                    return `
-                        <div class="nav-item ${isActive ? 'active' : ''}" 
-                             data-path="${item.path}"
-                             style="padding-left: ${(level + 1) * 12 + 20}px;">
-                            <div class="icon"><i class="ti ti-file-text"></i></div>
-                            <div class="label">${item.name.replace('.md', '')}</div>
-                        </div>
-                    `;
-                }
-                return '';
-            }).join('');
-        }
-    
-        function hasMatchingItems(items, query) {
-            return Object.keys(items).some(key => {
-                const item = items[key];
-                if (item._type === 'folder') {
-                    return item._name.toLowerCase().includes(query) || 
-                           hasMatchingItems(item._items, query);
-                }
-                return item.name.toLowerCase().includes(query);
-            });
-        }
-    
-        // ====================== 文件加载 ======================
-        async function loadFile(filePath) {
-            if (!filePath) filePath = 'index.md';
-            
-            mainContent.style.opacity = '0';
-            state.currentFile = filePath;
-            
-            try {
-                // 支持直接访问 content/ 下的文件
-                const fullPath = filePath.startsWith('content/') ? filePath : `content/${filePath}`;
-                const response = await fetch(fullPath);
-                
-                if (!response.ok) throw new Error('File not found');
-                
-                const markdown = await response.text();
-                
-                setTimeout(() => {
-                    mainContent.innerHTML = marked.parse(markdown);
-                    mainContent.style.opacity = '1';
-                    mainContent.style.animation = 'fadeIn 0.3s ease-out';
-                    
-                    // 自动为所有站内链接添加处理
-                    document.querySelectorAll('#main-content a[href]').forEach(link => {
-                        const href = link.getAttribute('href');
-                        if (href.endsWith('.md') || href.startsWith('#')) {
-                            link.addEventListener('click', handleInternalLink);
-                        }
-                    });
-                }, 150);
-            } catch (error) {
-                console.error('Load failed:', error);
-                showNotFoundPage();
-            }
-        }
-    
-        function handleInternalLink(event) {
-            const href = this.getAttribute('href');
-            
-            if (href.startsWith('#')) {
-                return; // 允许锚点跳转
-            }
-            
-            event.preventDefault();
-            
-            // 处理相对路径
-            let filePath = href;
-            if (filePath.startsWith('./')) {
-                const currentDir = state.currentFile.split('/').slice(0, -1).join('/');
-                filePath = `${currentDir}/${filePath.substring(2)}`;
-            }
-            
-            // 确保有.md后缀
-            if (!filePath.endsWith('.md')) filePath += '.md';
-            
-            loadFile(filePath);
-            updateActiveItem(filePath);
-            updateUrl(filePath);
-        }
-    
-        function showNotFoundPage() {
-            const clone = notFoundTemplate.content.cloneNode(true);
-            clone.getElementById('goHomeLink').addEventListener('click', (e) => {
-                e.preventDefault();
-                loadFile('index.md');
-                updateActiveItem('index.md');
-                updateUrl('index.md');
-            });
-            
-            mainContent.innerHTML = '';
-            mainContent.appendChild(clone);
-            mainContent.style.opacity = '1';
-            mainContent.style.animation = 'fadeIn 0.3s ease-out';
-        }
-    
-        // ====================== UI 交互 ======================
-        function setupEventListeners() {
-            // 导航点击
-            directoryTree.addEventListener('click', e => {
-                const navItem = e.target.closest('.nav-item');
-                if (navItem) {
-                    const filePath = navItem.dataset.path;
-                    loadFile(filePath);
-                    updateActiveItem(filePath);
-                    updateUrl(filePath);
+                // 处理 /path/[文件名].md
+                if (utils.isMarkdownFile(path)) {
+                    const filePath = utils.normalizePath(path.split('/').pop());
+                    this.loadAndRender(filePath);
                     return;
                 }
-                
-                const folderTitle = e.target.closest('.folder-title');
-                if (folderTitle) {
-                    const folderPath = folderTitle.dataset.folderPath;
-                    toggleFolderCollapse(folderPath, folderTitle);
+    
+                // 兼容旧式 ?file= 参数
+                if (params.has('file')) {
+                    let filePath = utils.normalizePath(params.get('file'));
+                    const newUrl = `${location.pathname}/${utils.makeSafeUrl(filePath)}`;
+                    window.history.replaceState({}, '', newUrl);
+                    this.loadAndRender(filePath);
+                    return;
                 }
-            });
-            
-            // 主题切换
-            themeSwitcher.addEventListener('click', toggleThemePanel);
-            document.querySelectorAll('.theme-option').forEach(option => {
-                option.addEventListener('click', () => {
-                    applyTheme(option.dataset.theme);
-                    hideThemePanel();
+    
+                // 默认首页
+                this.loadAndRender('index.md');
+            },
+    
+            loadAndRender(filePath) {
+                fileLoader.load(filePath)
+                    .then(() => nav.updateActiveItem(filePath))
+                    .catch(() => ui.showNotFound());
+            },
+    
+            navigateTo(filePath) {
+                const safePath = utils.makeSafeUrl(filePath);
+                const newUrl = `${location.pathname.replace(/\/[^/]*$/, '')}/${safePath}`;
+                window.history.pushState({}, '', newUrl);
+                this.loadAndRender(filePath);
+            }
+        };
+    
+        // ====================== 文件加载器 ======================
+        const fileLoader = {
+            async load(rawPath) {
+                const filePath = utils.normalizePath(rawPath);
+                state.currentFile = filePath;
+    
+                try {
+                    const fullPath = `content/${filePath}`;
+                    const response = await fetch(fullPath);
+                    if (!response.ok) throw new Error('File not found');
+    
+                    const markdown = await response.text();
+                    dom.mainContent.innerHTML = marked.parse(markdown);
+                    dom.mainContent.style.opacity = '1';
+                    
+                    // 处理内容中的内部链接
+                    this.bindInternalLinks();
+                } catch (error) {
+                    console.error('加载失败:', error);
+                    throw error;
+                }
+            },
+    
+            bindInternalLinks() {
+                document.querySelectorAll('#main-content a[href]').forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (href.match(/\.md($|\?|#)/i)) {
+                        link.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            router.navigateTo(href);
+                        });
+                    }
                 });
-            });
-            document.addEventListener('click', e => {
-                if (!themeSwitcher.contains(e.target) && !themePanel.contains(e.target)) {
-                    hideThemePanel();
-                }
-            });
-            
-            // 侧边栏
-            sidebarToggle.addEventListener('click', () => toggleSidebar(!state.sidebarCollapsed));
-            searchInput.addEventListener('input', (e) => {
-                state.searchQuery = e.target.value;
-                renderDirectoryTree();
-            });
-            
-            // 浏览器导航
-            window.addEventListener('popstate', () => handleInitialRouting());
-            window.addEventListener('resize', handleResize);
-            handleResize();
-        }
-    
-        function toggleFolderCollapse(folderPath, folderTitle) {
-            const wasCollapsed = state.collapsedFolders[folderPath] ?? true;
-            state.collapsedFolders[folderPath] = !wasCollapsed;
-            localStorage.setItem('collapsedFolders', JSON.stringify(state.collapsedFolders));
-            
-            folderTitle.classList.toggle('collapsed', !wasCollapsed);
-            const content = folderTitle.nextElementSibling;
-            if (content) content.style.display = wasCollapsed ? 'block' : 'none';
-        }
-    
-        function updateActiveItem(filePath) {
-            document.querySelectorAll('.nav-item').forEach(item => {
-                const isActive = item.dataset.path === filePath || 
-                               (filePath && item.dataset.path.replace('.md', '') === filePath.replace('.md', ''));
-                item.classList.toggle('active', isActive);
-            });
-        }
-    
-        function toggleSidebar(collapsed, save = true) {
-            state.sidebarCollapsed = collapsed;
-            document.body.classList.toggle('sidebar-collapsed', collapsed);
-            if (save) localStorage.setItem('sidebarCollapsed', collapsed);
-            
-            const icon = sidebarToggle.querySelector('i');
-            if (icon) icon.className = collapsed ? 'ti ti-menu-2' : 'ti ti-x';
-        }
-    
-        function handleResize() {
-            if (window.innerWidth < 768) {
-                if (!state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
-                    toggleSidebar(true, false);
-                }
-            } else if (state.sidebarCollapsed && !localStorage.getItem('sidebarCollapsed')) {
-                toggleSidebar(false, false);
             }
-        }
+        };
     
-        // ====================== 主题管理 ======================
-        function applyTheme(theme) {
-            state.theme = theme;
-            localStorage.setItem('theme', theme);
-            
-            if (theme === 'system') {
-                const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-            } else {
-                document.documentElement.setAttribute('data-theme', theme);
+        // ====================== 导航系统 ======================
+        const nav = {
+            updateActiveItem(filePath) {
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    const isActive = utils.normalizePath(item.dataset.path) === utils.normalizePath(filePath);
+                    item.classList.toggle('active', isActive);
+                });
+            },
+    
+            toggleFolder(folderPath, folderTitle) {
+                const wasCollapsed = state.collapsedFolders[folderPath] ?? true;
+                state.collapsedFolders[folderPath] = !wasCollapsed;
+                localStorage.setItem('collapsedFolders', JSON.stringify(state.collapsedFolders));
+                
+                folderTitle.classList.toggle('collapsed', !wasCollapsed);
+                const content = folderTitle.nextElementSibling;
+                if (content) content.style.display = wasCollapsed ? 'block' : 'none';
             }
+        };
+    
+        // ====================== 目录树系统 ======================
+        const directory = {
+            async load() {
+                try {
+                    const response = await fetch('DIRECTORY_TREE.md');
+                    const text = await response.text();
+                    state.directoryStructure = this.parse(text);
+                    this.render();
+                } catch (error) {
+                    console.error('目录加载失败:', error);
+                    dom.directoryTree.innerHTML = `
+                        <div class="error-message">
+                            <i class="ti ti-alert-circle"></i> 
+                            目录加载失败: ${error.message}
+                        </div>
+                    `;
+                }
+            },
+    
+            parse(text) {
+                const lines = text.split('\n');
+                const structure = {};
+                let currentGroup = '';
+    
+                lines.forEach(line => {
+                    if (line.startsWith('# ')) {
+                        currentGroup = line.substring(2).trim();
+                        structure[currentGroup] = [];
+                    } else if (line.startsWith('- [')) {
+                        const match = line.match(/^- \[(.+?)\]\((.+?)\)/);
+                        if (match && currentGroup) {
+                            let filePath = match[2];
+                            filePath = filePath.replace(/^\.?\/?content\//, '');
+                            structure[currentGroup].push({
+                                name: match[1],
+                                path: filePath.endsWith('.md') ? filePath : `${filePath}.md`
+                            });
+                        }
+                    }
+                });
+    
+                return this.buildNested(structure);
+            },
+    
+            buildNested(flat) {
+                const nested = {};
+                Object.keys(flat).forEach(groupPath => {
+                    const parts = groupPath.split('/');
+                    let current = nested;
+                    
+                    parts.forEach((part, i) => {
+                        if (!current[part]) {
+                            current[part] = {
+                                _type: 'folder',
+                                _name: part,
+                                _path: parts.slice(0, i+1).join('/'),
+                                _items: []
+                            };
+                        }
+                        
+                        if (i === parts.length-1) {
+                            flat[groupPath].forEach(file => {
+                                if (!current[part]._items.some(item => item.path === file.path)) {
+                                    current[part]._items.push({
+                                        _type: 'file',
+                                        ...file
+                                    });
+                                }
+                            });
+                        }
+                        
+                        current = current[part]._items;
+                    });
+                });
+                
+                return nested;
+            },
+    
+            render() {
+                let html = `
+                    <div class="nav-section">
+                        <div class="nav-item ${!state.currentFile ? 'active' : ''}" 
+                             data-path="index.md">
+                            <div class="icon"><i class="ti ti-home"></i></div>
+                            <div class="label">首页</div>
+                        </div>
+                    </div>
+                    ${this.renderItems(state.directoryStructure)}
+                `;
+                
+                dom.directoryTree.innerHTML = html || `
+                    <div class="empty-message">
+                        ${state.searchQuery ? '没有匹配的文档' : '目录为空'}
+                    </div>
+                `;
+            },
+    
+            renderItems(items, level=0) {
+                return Object.keys(items).map(key => {
+                    const item = items[key];
+                    
+                    if (item._type === 'folder') {
+                        const isCollapsed = state.collapsedFolders[item._path] ?? level>0;
+                        return `
+                            <div class="folder" style="padding-left: ${level*12}px">
+                                <div class="folder-title ${isCollapsed ? 'collapsed' : ''}" 
+                                     data-folder-path="${item._path}">
+                                    <div class="icon"><i class="ti ti-folder"></i></div>
+                                    <div class="label">${item._name}</div>
+                                    <div class="chevron"><i class="ti ti-chevron-down"></i></div>
+                                </div>
+                                <div class="folder-content" style="${isCollapsed ? 'display:none' : ''}">
+                                    ${this.renderItems(item._items, level+1)}
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        const isActive = state.currentFile && 
+                                       utils.normalizePath(state.currentFile) === utils.normalizePath(item.path);
+                        return `
+                            <div class="nav-item ${isActive ? 'active' : ''}" 
+                                 data-path="${item.path}"
+                                 style="padding-left: ${(level+1)*12 + 20}px">
+                                <div class="icon"><i class="ti ti-file-text"></i></div>
+                                <div class="label">${item.name.replace('.md', '')}</div>
+                            </div>
+                        `;
+                    }
+                }).join('');
+            }
+        };
+    
+        // ====================== UI 控制 ======================
+        const ui = {
+            init() {
+                this.setupEventListeners();
+                this.applyTheme(state.theme);
+                this.toggleSidebar(state.sidebarCollapsed, false);
+            },
+    
+            showNotFound() {
+                const clone = dom.notFoundTemplate.content.cloneNode(true);
+                clone.getElementById('goHomeLink').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    router.navigateTo('index.md');
+                });
+                dom.mainContent.innerHTML = '';
+                dom.mainContent.appendChild(clone);
+                dom.mainContent.style.opacity = '1';
+            },
+    
+            applyTheme(theme) {
+                state.theme = theme;
+                localStorage.setItem('theme', theme);
+                document.documentElement.setAttribute('data-theme', 
+                    theme === 'system' 
+                        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                        : theme
+                );
+            },
+    
+            toggleSidebar(collapsed, save=true) {
+                state.sidebarCollapsed = collapsed;
+                document.body.classList.toggle('sidebar-collapsed', collapsed);
+                if (save) localStorage.setItem('sidebarCollapsed', collapsed);
+            },
+    
+            setupEventListeners() {
+                // 目录点击
+                dom.directoryTree.addEventListener('click', (e) => {
+                    const item = e.target.closest('.nav-item');
+                    if (item) {
+                        router.navigateTo(item.dataset.path);
+                        return;
+                    }
+                    
+                    const folder = e.target.closest('.folder-title');
+                    if (folder) {
+                        nav.toggleFolder(folder.dataset.folderPath, folder);
+                    }
+                });
+    
+                // 搜索
+                dom.searchInput.addEventListener('input', (e) => {
+                    state.searchQuery = e.target.value;
+                    directory.render();
+                });
+    
+                // 窗口大小变化
+                window.addEventListener('resize', () => {
+                    if (window.innerWidth < 768 && !state.sidebarCollapsed) {
+                        this.toggleSidebar(true);
+                    }
+                });
+            }
+        };
+    
+        // ====================== 初始化执行 ======================
+        document.addEventListener('DOMContentLoaded', async () => {
+            ui.init();
+            await directory.load();
+            router.init();
             
-            updateThemeOptions();
-        }
-    
-        function updateThemeOptions() {
-            document.querySelectorAll('.theme-option').forEach(option => {
-                option.classList.toggle('active', option.dataset.theme === state.theme);
-            });
-        }
-    
-        function toggleThemePanel() {
-            state.themePanelVisible = !state.themePanelVisible;
-            themePanel.classList.toggle('show', state.themePanelVisible);
-        }
-    
-        function hideThemePanel() {
-            state.themePanelVisible = false;
-            themePanel.classList.remove('show');
-        }
+            setTimeout(() => {
+                dom.loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    dom.loadingScreen.style.display = 'none';
+                }, 500);
+            }, 800);
+        });
     </script>
 </body>
 </html>
