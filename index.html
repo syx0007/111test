@@ -794,7 +794,7 @@
             }
         }
     
-        // 解析目录树
+        // 解析目录树 - 增强对特殊字符的处理
         function parseDirectoryTree(text) {
             const lines = text.split('\n');
             const structure = {};
@@ -806,10 +806,18 @@
                         structure[groupName] = [];
                     }
                 } else if (line.startsWith('- [')) {
-                    const match = line.match(/^- \[(.+?)\]\((.+?)\)/);
+                    // 增强的正则表达式，处理文件名中的特殊字符
+                    const match = line.match(/^- \[(.*?)\]\((.*?)\)/);
                     if (match) {
                         const fileName = match[1];
                         let filePath = match[2];
+                        
+                        // 解码URI组件，处理特殊字符
+                        try {
+                            filePath = decodeURI(filePath);
+                        } catch (e) {
+                            console.warn('URI解码失败:', e);
+                        }
                         
                         if (filePath.startsWith('./content/')) {
                             filePath = filePath.substring(10);
@@ -880,7 +888,7 @@
             return nestedStructure;
         }
     
-        // 渲染目录树
+        // 渲染目录树 - 增强对特殊字符的处理
         function renderDirectoryTree() {
             if (!state.directoryStructure) return;
             
@@ -906,7 +914,7 @@
             }
         }
     
-        // 递归渲染嵌套项目
+        // 递归渲染嵌套项目 - 特殊字符处理
         function renderNestedItems(items, level = 0) {
             let html = '';
             
@@ -924,12 +932,15 @@
                                       state.collapsedFolders[item._path] : 
                                       level > 0;
                     
+                    // 对文件夹名进行HTML转义
+                    const escapedFolderName = escapeHtml(item._name);
+                    
                     html += `
                         <div class="folder" style="padding-left: ${level * 12}px;">
                             <div class="folder-title ${isCollapsed ? 'collapsed' : ''}" 
-                                 data-folder-path="${item._path}">
+                                 data-folder-path="${escapeHtml(item._path)}">
                                 <div class="icon"><i class="ti ti-folder"></i></div>
-                                <div class="label">${item._name}</div>
+                                <div class="label">${escapedFolderName}</div>
                                 <div class="chevron"><i class="ti ti-chevron-down"></i></div>
                             </div>
                             <div class="folder-content" style="${isCollapsed ? 'display: none;' : ''}">
@@ -945,12 +956,15 @@
                         const isActive = state.currentFile === item.path || 
                                        (state.currentFile && state.currentFile.replace('.md', '') === item.path.replace('.md', ''));
                         
+                        // 对文件名进行HTML转义
+                        const escapedFileName = escapeHtml(item.name.replace('.md', ''));
+                        
                         html += `
                             <div class="nav-item ${isActive ? 'active' : ''}" 
-                                 data-path="${item.path}"
+                                 data-path="${escapeHtml(item.path)}"
                                  style="padding-left: ${(level + 1) * 12 + 20}px;">
                                 <div class="icon"><i class="ti ti-file-text"></i></div>
-                                <div class="label">${item.name.replace('.md', '')}</div>
+                                <div class="label">${escapedFileName}</div>
                             </div>
                         `;
                     }
@@ -958,6 +972,17 @@
             });
             
             return html;
+        }
+    
+        // HTML转义函数，防止XSS并正确显示特殊字符
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
     
         // 检查文件夹或其子项是否匹配搜索
@@ -1024,7 +1049,7 @@
             handleResize();
         }
     
-        // 从 URL 路径加载文件
+        // 从 URL 路径加载文件 - 增强特殊字符处理
         function loadFileFromPath() {
             // 获取当前路径，处理GitHub Pages的仓库名情况
             let path = window.location.pathname;
@@ -1047,6 +1072,13 @@
                 path = path.slice(0, -1);
             }
             
+            // 解码URI组件，处理特殊字符
+            try {
+                path = decodeURIComponent(path);
+            } catch (e) {
+                console.warn('URI解码失败:', e);
+            }
+            
             // 构建文件路径
             let filePath = path + '.md';
             
@@ -1055,7 +1087,7 @@
             updateActiveItem(filePath);
         }
     
-        // 加载文件
+        // 加载文件 - 增强特殊字符处理
         async function loadFile(filePath) {
             if (!filePath) {
                 filePath = 'index.md';
@@ -1071,6 +1103,9 @@
                 } else {
                     fullPath = './content/' + filePath;
                 }
+                
+                // 对路径进行编码，确保特殊字符正确处理
+                fullPath = encodeURI(fullPath).replace(/'/g, "%27");
                 
                 const response = await fetch(fullPath);
                 if (!response.ok) throw new Error('文件加载失败');
@@ -1121,7 +1156,7 @@
             });
         }
     
-        // 更新 URL
+        // 更新 URL - 增强特殊字符处理
         function updateUrl(filePath) {
             let displayPath = filePath.replace(/^content\//, '').replace(/\.md$/, '');
             
@@ -1133,7 +1168,15 @@
             const repoName = window.location.pathname.split('/')[1];
             const basePath = repoName ? `/${repoName}/` : '/';
             
-            const newUrl = window.location.origin + basePath + displayPath;
+            // 对路径进行编码，确保特殊字符正确处理
+            const encodedPath = encodeURIComponent(displayPath)
+                .replace(/'/g, "%27")
+                .replace(/\(/g, "%28")
+                .replace(/\)/g, "%29")
+                .replace(/\[/g, "%5B")
+                .replace(/\]/g, "%5D");
+            
+            const newUrl = window.location.origin + basePath + encodedPath;
             window.history.pushState({ path: newUrl }, '', newUrl);
         }
     
