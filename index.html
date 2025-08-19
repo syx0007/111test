@@ -563,7 +563,9 @@
     <div id="sidebar">
         <div class="sidebar-header">
             <div class="logo">
+                <!-- 可以替换为自定义图标 -->
                 <img src="material/logo.gif" alt="Logo">
+                <!-- <i class="ti ti-book"></i> -->
             </div>
             <div class="title">文档</div>
         </div>
@@ -605,6 +607,7 @@
             <div class="name">蓝色</div>
         </div>
         <div class="theme-option" data-theme="ba">
+            <!-- <div class="icon"><i class="ti ti-brand-ba"></i></div> -->
             <div class="icon"><img src="material/icon.png" style="width: auto; height: 100%; max-width: 100%;" alt="蔚蓝"></div>
             <div class="name">蔚蓝</div>
         </div>
@@ -635,7 +638,6 @@
             gfm: true,
             breaks: true
         });
-
         // 状态管理
         const state = {
             currentFile: null,
@@ -646,7 +648,6 @@
             searchQuery: '',
             themePanelVisible: false
         };
-
         // DOM 元素
         const loadingScreen = document.getElementById('loadingScreen');
         const sidebar = document.getElementById('sidebar');
@@ -662,7 +663,6 @@
         const notFoundTemplate = document.getElementById('notFoundTemplate');
         const goHomeLink = document.getElementById('goHomeLink');
         const themeOptions = document.querySelectorAll('.theme-option');
-
         // 初始化
         document.addEventListener('DOMContentLoaded', async () => {
             applyTheme(state.theme);
@@ -670,13 +670,12 @@
             fetchHitokoto();
             await loadDirectoryTree();
             setupEventListeners();
-            handleInitialUrl();
+            handleInitialUrl(); // 处理初始URL，包括 ?file= 和 /path
             setTimeout(() => {
                 loadingScreen.style.opacity = '0';
                 loadingScreen.style.visibility = 'hidden';
             }, 500);
         });
-
         // 获取一言
         async function fetchHitokoto() {
             try {
@@ -687,7 +686,6 @@
                 hitokotoElement.textContent = '"学而不思则罔，思而不学则殆。" —— 孔子';
             }
         }
-
         // 加载目录树
         async function loadDirectoryTree() {
             try {
@@ -701,7 +699,6 @@
                 directoryTree.innerHTML = `<div style="padding: 15px; color: red;">加载目录树失败: ${error.message}</div>`;
             }
         }
-
         // 解析目录树
         function parseDirectoryTree(text) {
             const lines = text.split('\n');
@@ -741,7 +738,6 @@
             }
             return buildNestedStructure(structure);
         }
-
         // 构建嵌套结构
         function buildNestedStructure(flatStructure) {
             const nestedStructure = {};
@@ -773,7 +769,6 @@
             });
             return nestedStructure;
         }
-
         // 渲染目录树
         function renderDirectoryTree() {
             if (!state.directoryStructure) return;
@@ -788,7 +783,6 @@
             `;
             html += renderNestedItems(state.directoryStructure);
             directoryTree.innerHTML = html;
-
             if (state.searchQuery && directoryTree.children.length === 0) {
                 directoryTree.innerHTML = `
                     <div style="padding: 20px; text-align: center; color: var(--text-color); opacity: 0.7;">
@@ -797,7 +791,6 @@
                 `;
             }
         }
-
         // 递归渲染嵌套项目
         function renderNestedItems(items, level = 0) {
             let html = '';
@@ -841,7 +834,6 @@
             });
             return html;
         }
-
         // 检查匹配
         function hasMatchingItems(items, query) {
             for (const key in items) {
@@ -855,7 +847,6 @@
             }
             return false;
         }
-
         // 设置事件监听器
         function setupEventListeners() {
             directoryTree.addEventListener('click', e => {
@@ -873,7 +864,6 @@
                     toggleFolderCollapse(folderPath, folderTitle);
                 }
             });
-
             themeSwitcher.addEventListener('click', toggleThemePanel);
             themeOptions.forEach(option => {
                 option.addEventListener('click', () => {
@@ -882,22 +872,18 @@
                     toggleThemePanel();
                 });
             });
-
             document.addEventListener('click', (e) => {
                 if (!themeSwitcher.contains(e.target) && !themePanel.contains(e.target)) {
                     hideThemePanel();
                 }
             });
-
             sidebarToggle.addEventListener('click', () => {
                 toggleSidebar(!state.sidebarCollapsed);
             });
-
             searchInput.addEventListener('input', (e) => {
                 state.searchQuery = e.target.value;
                 renderDirectoryTree();
             });
-
             document.addEventListener('click', (e) => {
                 if (e.target.id === 'goHomeLink') {
                     e.preventDefault();
@@ -906,14 +892,11 @@
                     updateUrl('index.md');
                 }
             });
-
             window.addEventListener('resize', handleResize);
             handleResize();
-
             // 处理浏览器前进/后退
-            window.addEventListener('popstate', handleUrlChange);
+            window.addEventListener('popstate', handleInitialUrl);
         }
-
         // 切换侧边栏
         function toggleSidebar(collapsed, saveToStorage = true) {
             state.sidebarCollapsed = collapsed;
@@ -923,14 +906,12 @@
             }
             updateSidebarToggleIcon();
         }
-
         function updateSidebarToggleIcon() {
             const icon = sidebarToggle.querySelector('i');
             if (icon) {
                 icon.className = state.sidebarCollapsed ? 'ti ti-menu-2' : 'ti ti-x';
             }
         }
-
         // 折叠文件夹
         function toggleFolderCollapse(folderPath, folderTitle) {
             const wasCollapsed = state.collapsedFolders[folderPath] !== undefined ? state.collapsedFolders[folderPath] : true;
@@ -942,7 +923,6 @@
                 contentElement.style.display = wasCollapsed ? 'block' : 'none';
             }
         }
-
         // 加载文件
         async function loadFile(filePath) {
             if (!filePath) {
@@ -969,7 +949,6 @@
                 showNotFoundPage();
             }
         }
-
         // 显示404
         function showNotFoundPage() {
             const notFoundContent = notFoundTemplate.content.cloneNode(true);
@@ -977,7 +956,6 @@
             mainContent.appendChild(notFoundContent);
             mainContent.style.opacity = '1';
         }
-
         // 更新选中项
         function updateActiveItem(filePath) {
             document.querySelectorAll('.nav-item').forEach(item => {
@@ -986,15 +964,14 @@
                 item.classList.toggle('active', isActive);
             });
         }
-
-        // 处理初始 URL
+        // 处理初始 URL 和前进后退
         function handleInitialUrl() {
             const params = new URLSearchParams(window.location.search);
             const fileParam = params.get('file');
             const path = window.location.pathname;
 
             if (fileParam) {
-                // 重定向到路径模式
+                // 如果存在 ?file= 参数，重定向到 /路径 模式
                 const newPath = fileParam.endsWith('.md') ? fileParam.replace(/\.md$/, '') : fileParam;
                 const url = '/' + newPath;
                 window.history.replaceState({}, '', url);
@@ -1003,32 +980,27 @@
                 return;
             }
 
+            // 处理根路径
             if (path === '/' || path === '/index.html') {
                 loadFile('index.md');
                 updateActiveItem('index.md');
                 return;
             }
 
-            // 从路径加载
+            // 处理 /路径 模式
             const fileName = path.endsWith('/') ? path.slice(1, -1) : path.slice(1);
             if (fileName) {
-                loadFile(fileName + '.md');
-                updateActiveItem(fileName + '.md');
+                const filePath = fileName + '.md';
+                loadFile(filePath);
+                updateActiveItem(filePath);
             }
         }
-
-        // 处理前进/后退
-        function handleUrlChange() {
-            handleInitialUrl();
-        }
-
         // 更新 URL 为路径形式
         function updateUrl(filePath) {
             const path = filePath.replace(/\.md$/, '');
             const url = path === 'index' ? '/' : '/' + path;
             window.history.pushState({ path: url }, '', url);
         }
-
         // 应用主题
         function applyTheme(theme) {
             state.theme = theme;
@@ -1041,14 +1013,12 @@
             }
             updateThemeOptions();
         }
-
         // 更新主题选项
         function updateThemeOptions() {
             themeOptions.forEach(option => {
                 option.classList.toggle('active', option.dataset.theme === state.theme);
             });
         }
-
         // 主题面板
         function toggleThemePanel() {
             state.themePanelVisible ? hideThemePanel() : showThemePanel();
@@ -1061,7 +1031,6 @@
             themePanel.classList.remove('show');
             state.themePanelVisible = false;
         }
-
         // 响应式
         function handleResize() {
             if (window.innerWidth < 768) {
@@ -1074,7 +1043,6 @@
                 }
             }
         }
-
         // 监听系统主题
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
             if (state.theme === 'system') {
